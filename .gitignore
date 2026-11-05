@@ -1,0 +1,5 @@
+.DS_Store
+backtest/
+historico/
+__pycache__/
+.env

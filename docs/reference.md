@@ -1,89 +1,89 @@
-# FDA Catalyst Intelligence — Referencia técnica
+# FDA Catalyst Intelligence — Technical Reference
 
 Nov 5, 2026 · @Dani
 
-Todo lo que necesita quien construya o use el sistema: fuentes, accesos, reglas de datos, modelo, análisis e interfaz. El orden de construcción está en el documento hermano, el [plan de implementación](plan.md).
+Everything needed by whoever builds or uses the system: sources, access, data rules, model, analysis and interface. The build order is in the companion document, the [implementation plan](plan.md).
 
-## Propósito, alcance y principios
+## Purpose, scope and principles
 
-El sistema localiza decisiones de la FDA y lecturas de ensayos de empresas cotizadas, reúne la evidencia pública con su fuente, la compara con lo que descuenta el mercado y genera un informe por evento. La decisión de operar es siempre de una persona.
+The system finds FDA decisions and trial readouts of listed companies, gathers the public evidence with its source, compares it with what the market is pricing in, and produces one report per event. The decision to trade is always a person's.
 
-### Qué hace
+### What it does
 
-- Calendario de catalizadores (PDUFA, comités asesores, lecturas de ensayos) con precisión de fecha, historial de cambios y fuente.
+- Catalyst calendar (PDUFA, advisory committees, trial readouts) with date precision, change history and source.
 
-- Guarda cada día precios y opciones de las empresas del calendario desde el primer día, aunque todavía no se analicen.
+- Stores prices and options of the calendar companies every day from day one, even if they are not analysed yet.
 
-- Triaje: decide qué eventos merecen análisis profundo según su posible impacto económico.
+- Triage: decides which events deserve deep analysis according to their possible economic impact.
 
-- Expediente de los eventos importantes: datos clínicos, historial regulatorio, caja, opciones y mercados de predicción.
+- Dossier for the important events: clinical data, regulatory history, cash, options and prediction markets.
 
-- Tres estimaciones separadas: probabilidad de aprobación, movimiento de la acción en cada escenario y resultado de una regla de operación fijada de antemano.
+- Three separate estimates: probability of approval, stock move in each scenario, and the result of a trading rule fixed in advance.
 
-- Resumen diario y registro del resultado real de cada evento.
+- Daily digest and a record of the actual outcome of each event.
 
-### Qué no hace
+### What it does not do
 
-- No ejecuta órdenes ni se conecta a cuentas de bróker o de mercados de predicción.
+- It does not execute orders or connect to broker or prediction-market accounts.
 
-- No usa información no pública ni salta inicios de sesión o muros de pago.
+- It does not use non-public information or bypass logins or paywalls.
 
-- No da recomendaciones de inversión ni clínicas.
+- It gives no investment or clinical recommendations.
 
-### Principios
+### Principles
 
-1.  **Lo simple primero.** Un CLI, un archivo SQLite y carpetas de ficheros. Sin Docker, sin servidor web, sin colas. Solo se añade complejidad cuando un problema real lo pide.
+1.  **Simple first.** One CLI, one SQLite file and folders of files. No Docker, no web server, no queues. Complexity is added only when a real problem asks for it.
 
-2.  **Los datos salen de documentos.** Cada fecha y cada cifra clave lleva URL y cita breve. El LLM lee y resume, pero no inventa; lo ambiguo queda sin resolver.
+2.  **Data comes from documents.** Every date and every key figure carries a URL and a short quote. The LLM reads and summarises, but does not invent; anything ambiguous is left unresolved.
 
-3.  **El historial no se borra.** Un cambio de fecha añade una fila y marca la anterior como sustituida.
+3.  **History is never deleted.** A date change adds a row and marks the previous one as replaced.
 
-4.  **Dos fechas por dato**: cuándo se publicó y cuándo lo vio el sistema. Con eso basta para un backtest honesto.
+4.  **Two dates per data point**: when it was published and when the system saw it. That is enough for an honest backtest.
 
-5.  **Cada módulo funciona solo.** Si una fuente falla, se anota y el resto sigue.
+5.  **Each module works on its own.** If a source fails, it is noted and the rest carries on.
 
-6.  **Investigar donde hay oportunidad.** El análisis profundo se reserva para los eventos que pasan el triaje.
+6.  **Research where there is opportunity.** Deep analysis is reserved for the events that pass triage.
 
-### Estado de cada dato
+### Status of each data point
 
-| Estado        | Significado                                                            |
-|---------------|------------------------------------------------------------------------|
-| confirmado    | Está en un documento primario (SEC, FDA, empresa, registro de ensayos) |
-| sin confirmar | Solo aparece en un agregador o aún no tiene fuente primaria            |
-| conflicto     | Dos fuentes dicen cosas distintas: se muestran ambas                   |
-| ambiguo       | El documento no permite saberlo con seguridad: se deja vacío           |
+| Status      | Meaning                                                                |
+|-------------|------------------------------------------------------------------------|
+| confirmed   | It is in a primary document (SEC, FDA, company, trial registry)        |
+| unconfirmed | It appears only in an aggregator or does not yet have a primary source |
+| conflict    | Two sources say different things: both are shown                       |
+| ambiguous   | The document does not allow certainty: it is left empty                |
 
-### Límites legales y prácticos
+### Legal and practical limits
 
-- **España**: la DGOJ bloqueó en mayo de 2026 las webs de Kalshi y Polymarket como medida cautelar ([DGOJ](https://www.ordenacionjuego.es/en/node/3309)). El sistema solo lee sus precios; si no responden, lo anota y sigue.
+- **Spain**: in May 2026 the DGOJ blocked the Kalshi and Polymarket websites as a precautionary measure ([DGOJ](https://www.ordenacionjuego.es/en/node/3309)). The system only reads their prices; if they do not respond, it notes it and carries on.
 
-- **Términos de uso**: respetar los límites de cada fuente y la atribución que pide pdufa.bio en su plan gratuito. yfinance y los datos de mercado, solo para uso personal.
+- **Terms of use**: respect each source's limits and the attribution that pdufa.bio requires on its free plan. yfinance and market data, for personal use only.
 
-- **Contenido de terceros**: guardar enlaces y citas breves; texto completo solo con licencia abierta.
+- **Third-party content**: store links and short quotes; full text only with an open licence.
 
-## Arquitectura y distribución
+## Architecture and distribution
 
-Un paquete Python con un único comando, `fdaci`. Los datos viven en un archivo SQLite y en carpetas de ficheros dentro de `FDACI_HOME`: copiar esa carpeta es la copia de seguridad.
+A Python package with a single command, `fdaci`. The data lives in a SQLite file and in folders of files inside `FDACI_HOME`: copying that folder is the backup.
 
-![Un solo CLI para personas, agentes y tareas programadas](img/arquitectura.png)
+![A single CLI for people, agents and scheduled tasks](img/arquitectura.png)
 
-arquitectura · 4 lanzadores, 1 CLI, 9 módulos, 2 almacenes
+architecture · 4 launchers, 1 CLI, 9 modules, 2 stores
 
-Los módulos de recogida descargan, extraen con cita y guardan. Los de elaboración solo leen de la base de datos. Cada módulo se lanza por separado, a mano o programado.
+The collection modules download, extract with a quote and store. The processing modules only read from the database. Each module is launched separately, by hand or scheduled.
 
-### Pila técnica
+### Technical stack
 
-- Python 3.12 con `uv`; Typer para el CLI; `httpx` con reintentos sencillos; `feedparser`; `selectolax` para HTML; PyMuPDF para PDF; Jinja2 para informes.
+- Python 3.12 with `uv`; Typer for the CLI; `httpx` with simple retries; `feedparser`; `selectolax` for HTML; PyMuPDF for PDF; Jinja2 for reports.
 
-- SQLite con el módulo `sqlite3` de Python. Migraciones como ficheros SQL numerados (`migrations/001_init.sql`, `002_...`) que aplica `fdaci db upgrade` según `PRAGMA user_version`.
+- SQLite with Python's `sqlite3` module. Migrations as numbered SQL files (`migrations/001_init.sql`, `002_...`) applied by `fdaci db upgrade` according to `PRAGMA user_version`.
 
-- LLM por API, configurable; salida JSON validada con Pydantic.
+- LLM through an API, configurable; JSON output validated with Pydantic.
 
-- `pytest` con respuestas grabadas en `tests/fixtures/`; `ruff` para estilo.
+- `pytest` with recorded responses in `tests/fixtures/`; `ruff` for style.
 
-- Si algún día hiciera falta concurrencia real o varios usuarios, se pasa a PostgreSQL; no antes.
+- If real concurrency or several users are ever needed, move to PostgreSQL; not before.
 
-### Estructura del repositorio
+### Repository structure
 
 ``` text
 fda-catalyst-intel/
@@ -93,7 +93,7 @@ fda-catalyst-intel/
   src/fdaci/
     cli.py
     core/        config, db, http, files, llm
-    connectors/  un archivo por fuente
+    connectors/  one file per source
     modules/     calendar, fda, market, clinical, predict, triage, report, backtest
   openclaw/      skills/fdaci/SKILL.md
   scripts/       install.sh
@@ -101,19 +101,19 @@ fda-catalyst-intel/
   docs/          reference.md  plan.md  sources/
 ```
 
-### Carpeta de datos
+### Data folder
 
 ``` text
 $FDACI_HOME/
-  fdaci.db                      base de datos
-  raw/<fuente>/<fecha>/         documentos descargados tal cual
-  market/<fecha>/<ticker>.json  cadenas de opciones completas
-  reports/<evento>/<fecha>.md   informes; nunca se sobrescriben
-  digest/<fecha>.md             resumen diario
-  fdaci.log                     registro de texto
+  fdaci.db                      database
+  raw/<source>/<date>/          downloaded documents as they are
+  market/<date>/<ticker>.json   full option chains
+  reports/<event>/<date>.md     reports; never overwritten
+  digest/<date>.md              daily digest
+  fdaci.log                     text log
 ```
 
-### Contrato de un conector
+### Connector contract
 
 ``` text
 def sync(since: date | None = None) -> SyncResult: ...
@@ -126,268 +126,268 @@ class SyncResult:
     error: str | None = None
 ```
 
-Cada conector respeta el límite de su fuente y `Retry-After`, guarda el documento original en `raw/` antes de interpretarlo y, si falla, deja el error en `source_status` sin parar a los demás.
+Each connector respects its source's limit and `Retry-After`, stores the original document in `raw/` before interpreting it and, if it fails, leaves the error in `source_status` without stopping the others.
 
-## Catálogo de fuentes
+## Source catalogue
 
-Diez fuentes bastan para el sistema completo y todas son gratuitas. El resto queda como opcional: se añade solo si hace falta.
+Ten sources are enough for the complete system and all of them are free. The rest are optional: add them only if needed.
 
-### Núcleo
+### Core
 
-| Fuente                                                    | Módulo        | Acceso    | Clave                        | Límites                                         | Para qué                                                             |
+| Source                                                    | Module        | Access    | Key                          | Limits                                          | Purpose                                                              |
 |-----------------------------------------------------------|---------------|-----------|------------------------------|-------------------------------------------------|----------------------------------------------------------------------|
-| pdufa.bio                                                 | calendar      | API       | Opcional                     | 1.000/día y 10/min sin clave                    | Calendario de partida con historial de fechas                        |
-| SEC EDGAR (submissions, búsqueda de texto completo, XBRL) | calendar, fda | API       | No; `User-Agent` obligatorio | 10 peticiones/s                                 | Verificar fechas, CRL anunciadas, caja                               |
-| Agencias de comunicados                                   | calendar      | RSS       | No                           | Razonable                                       | Anuncios en cuanto salen                                             |
-| openFDA `drugsfda`                                        | fda           | API       | Opcional                     | 1.000/día sin clave; 120.000 con clave gratuita | Aprobaciones y precedentes                                           |
-| Páginas de la FDA (aprobaciones, comités, RSS)            | fda           | HTML, RSS | No                           | Razonable                                       | Decisiones del día y comités                                         |
-| ClinicalTrials.gov API v2                                 | clinical      | API       | No                           | ≈ 50/min                                        | Diseño y cambios de los ensayos                                      |
-| Europe PMC                                                | clinical      | API       | No                           | Razonable                                       | Artículos, preprints y suplementos de congresos en una sola búsqueda |
-| yfinance                                                  | market        | Librería  | No                           | No oficial                                      | Precios, volumen y opciones desde el primer día, uso personal        |
-| Kalshi                                                    | predict       | API       | No para lectura              | Según docs                                      | Probabilidad de mercado                                              |
-| Polymarket                                                | predict       | API       | No                           | Según docs                                      | Probabilidad de mercado                                              |
+| pdufa.bio                                                 | calendar      | API       | Optional                     | 1,000/day and 10/min without key                | Starting calendar with date history                                  |
+| SEC EDGAR (submissions, full-text search, XBRL)           | calendar, fda | API       | No; `User-Agent` required    | 10 requests/s                                   | Verify dates, announced CRLs, cash                                   |
+| Press release wires                                       | calendar      | RSS       | No                           | Reasonable                                      | Announcements as soon as they come out                               |
+| openFDA `drugsfda`                                        | fda           | API       | Optional                     | 1,000/day without key; 120,000 with free key    | Approvals and precedents                                             |
+| FDA pages (approvals, committees, RSS)                    | fda           | HTML, RSS | No                           | Reasonable                                      | Same-day decisions and committees                                    |
+| ClinicalTrials.gov API v2                                 | clinical      | API       | No                           | ≈ 50/min                                        | Trial design and changes                                             |
+| Europe PMC                                                | clinical      | API       | No                           | Reasonable                                      | Articles, preprints and conference supplements in a single search    |
+| yfinance                                                  | market        | Library   | No                           | Unofficial                                      | Prices, volume and options from day one, personal use                |
+| Kalshi                                                    | predict       | API       | Not for reading             | Per docs                                        | Market probability                                                   |
+| Polymarket                                                | predict       | API       | No                           | Per docs                                        | Market probability                                                   |
 
-### Opcional, cuando haga falta
+### Optional, when needed
 
-| Fuente                                             | Cuándo añadirla                                                                                   |
+| Source                                             | When to add it                                                                                    |
 |----------------------------------------------------|---------------------------------------------------------------------------------------------------|
-| Massive o Interactive Brokers                      | Si yfinance falla o hace falta más calidad en opciones                                            |
-| openFDA CRL                                        | Para leer motivos de rechazo; se actualiza de forma irregular y no sirve para detectar decisiones |
-| Federal Register                                   | Si el calendario de comités de la FDA y pdufa.bio no bastan                                       |
-| FDA Data Dashboard                                 | Para revisar inspecciones de una planta en un evento A                                            |
-| FINRA Short Interest                               | Si el interés en corto resulta útil en el triaje                                                  |
-| Webs de inversores por empresa                     | Para empresas clave de la lista de seguimiento                                                    |
-| AACT                                               | Para reconstruir ensayos pasados en el backtest                                                   |
-| PubMed, Crossref, OpenAlex, bioRxiv                | Si Europe PMC no encuentra algo                                                                   |
-| Endpoint Arena, EMA, OpenFIGI, agregadores de pago | Solo si se demuestra que aportan algo                                                             |
+| Massive or Interactive Brokers                     | If yfinance fails or better quality is needed for options                                         |
+| openFDA CRL                                        | To read rejection reasons; updated irregularly and not useful for detecting decisions             |
+| Federal Register                                   | If the FDA committee calendar and pdufa.bio are not enough                                        |
+| FDA Data Dashboard                                 | To review inspections of a plant in an A event                                                    |
+| FINRA Short Interest                               | If short interest turns out to be useful in triage                                                |
+| Per-company investor websites                      | For key companies on the watchlist                                                                |
+| AACT                                               | To reconstruct past trials in the backtest                                                        |
+| PubMed, Crossref, OpenAlex, bioRxiv                | If Europe PMC does not find something                                                             |
+| Endpoint Arena, EMA, OpenFIGI, paid aggregators    | Only if they are shown to add something                                                           |
 
-Las fichas siguientes describen todas, núcleo y opcionales, para no tener que volver a investigarlas.
+The following entries describe all of them, core and optional, so they do not have to be researched again.
 
-## Conectores: calendario y FDA
+## Connectors: calendar and FDA
 
-El calendario parte de pdufa.bio y se verifica y completa con EDGAR y los comunicados; la FDA confirma comités y decisiones. Todos los conectores cumplen el contrato común descrito en la arquitectura.
+The calendar starts from pdufa.bio and is verified and completed with EDGAR and press releases; the FDA confirms committees and decisions. All connectors follow the common contract described in the architecture.
 
 ### pdufa.bio (calendar, A)
 
-- **Base**: `https://www.pdufa.bio/api/v1`. Endpoints `/pdufa`, `/events`, `/readouts`, `/conferences`, `/adcomm`, `/usage`, `/health`. Parámetros `ticker`, `type`, `status`, `from`, `to`, `q`, `limit` (máx. 1.000), `offset`, `format` ([docs](https://www.pdufa.bio/developers)).
+- **Base**: `https://www.pdufa.bio/api/v1`. Endpoints `/pdufa`, `/events`, `/readouts`, `/conferences`, `/adcomm`, `/usage`, `/health`. Parameters `ticker`, `type`, `status`, `from`, `to`, `q`, `limit` (max. 1,000), `offset`, `format` ([docs](https://www.pdufa.bio/developers)).
 
-- **Acceso**: sin clave, 1.000 peticiones al día y 10 por minuto. Con clave gratuita (cabecera `x-api-key`), 10.000 al mes y 30 por minuto. Respeta `Retry-After` en 429.
+- **Access**: without a key, 1,000 requests per day and 10 per minute. With a free key (`x-api-key` header), 10,000 per month and 30 per minute. Respect `Retry-After` on 429.
 
-- **Campos clave**: `date` (nulo si no es día exacto), `date_precision` (day, month, quarter, year), `date_month`, `date_history` con el motivo de cada cambio, `source` y `source_url`, `goal_date_held`, `id` estable.
+- **Key fields**: `date` (null if not an exact day), `date_precision` (day, month, quarter, year), `date_month`, `date_history` with the reason for each change, `source` and `source_url`, `goal_date_held`, stable `id`.
 
-- **Origen de las fechas**: las de día exacto salen de FDA, SEC o la empresa; los periodos suelen ser estimaciones de ClinicalTrials.gov y cambian.
+- **Origin of the dates**: exact-day dates come from the FDA, SEC or the company; periods are usually ClinicalTrials.gov estimates and change.
 
-- **Persistir**: todo el registro bruto, más `upsert` por `(fuente, id externo)`, nunca por fecha.
+- **Persist**: the whole raw record, plus `upsert` by `(source, external id)`, never by date.
 
-- **Obligación**: enlace visible a pdufa.bio en informes y vistas que usen sus datos en plan gratuito.
+- **Obligation**: visible link to pdufa.bio in reports and views that use its data on the free plan.
 
-- **Cautela**: la página es ambigua sobre si NCT e indicación son gratuitos; tratarlos como opcionales.
+- **Caution**: the page is ambiguous about whether NCT and indication are free; treat them as optional.
 
-### SEC EDGAR (calendar y market, A)
+### SEC EDGAR (calendar and market, A)
 
-| Endpoint                                                                              | Uso                                                                                  |
+| Endpoint                                                                              | Use                                                                                  |
 |---------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------|
-| `https://www.sec.gov/files/company_tickers.json`                                      | Ticker → CIK (diario)                                                                |
-| `https://data.sec.gov/submissions/CIK##########.json`                                 | Filings por empresa; CIK con 10 dígitos                                              |
-| `https://efts.sec.gov/LATEST/search-index?q=&forms=&dateRange=custom&startdt=&enddt=` | Búsqueda de texto completo en todo EDGAR, anexos incluidos; `/LATEST/` en mayúsculas |
-| `https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=8-K&output=atom`     | Últimos 8-K, casi en tiempo real                                                     |
-| `https://data.sec.gov/api/xbrl/companyfacts/CIK##########.json`                       | Caja, deuda, gasto, acciones (ficha de mercado)                                      |
-| `https://www.sec.gov/Archives/edgar/data/{cik}/{accession sin guiones}/{archivo}`     | Documento original; el comunicado suele ser EX-99.1                                  |
+| `https://www.sec.gov/files/company_tickers.json`                                      | Ticker → CIK (daily)                                                                 |
+| `https://data.sec.gov/submissions/CIK##########.json`                                 | Filings per company; 10-digit CIK                                                    |
+| `https://efts.sec.gov/LATEST/search-index?q=&forms=&dateRange=custom&startdt=&enddt=` | Full-text search across all of EDGAR, exhibits included; `/LATEST/` in capitals      |
+| `https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=8-K&output=atom`     | Latest 8-Ks, almost in real time                                                     |
+| `https://data.sec.gov/api/xbrl/companyfacts/CIK##########.json`                       | Cash, debt, spending, shares (market sheet)                                          |
+| `https://www.sec.gov/Archives/edgar/data/{cik}/{accession sin guiones}/{archivo}`     | Original document; the press release is usually EX-99.1                              |
 
-- **Reglas** ([SEC](https://www.sec.gov/edgar/searchedgar/accessing-edgar-data.htm)): cabecera `User-Agent` con nombre de la herramienta y un email de contacto configurable (sin ella, 403); máximo 10 peticiones por segundo sumando todo; operar a 5 por segundo con backoff.
+- **Rules** ([SEC](https://www.sec.gov/edgar/searchedgar/accessing-edgar-data.htm)): `User-Agent` header with the tool name and a configurable contact email (without it, 403); maximum 10 requests per second in total; operate at 5 per second with backoff.
 
-- **Consultas de descubrimiento** (formas 8-K, 6-K, 10-Q, 10-K, 20-F; últimos 7 días): `"PDUFA"`, `"target action date"`, `"major amendment"`, `"complete response letter"`, `"advisory committee"`, `"accepted for filing"`, `"priority review"`, `"late-cycle meeting"`.
+- **Discovery queries** (forms 8-K, 6-K, 10-Q, 10-K, 20-F; last 7 days): `"PDUFA"`, `"target action date"`, `"major amendment"`, `"complete response letter"`, `"advisory committee"`, `"accepted for filing"`, `"priority review"`, `"late-cycle meeting"`.
 
-- **Extracción**: el LLM recibe el párrafo y devuelve fármaco, indicación, tipo de solicitud, tipo de revisión, fecha, precisión y cita literal. Se valida que la cita aparece en el documento.
+- **Extraction**: the LLM receives the paragraph and returns drug, indication, application type, review type, date, precision and verbatim quote. It is validated that the quote appears in the document.
 
-### Comunicados y webs de inversores (calendar, A)
+### Press releases and investor websites (calendar, A)
 
-- PR Newswire: `https://www.prnewswire.com/rss/health-latest-news/health-latest-news-list.rss` y el índice `prnewswire.com/rss/`.
+- PR Newswire: `https://www.prnewswire.com/rss/health-latest-news/health-latest-news-list.rss` and the index `prnewswire.com/rss/`.
 
-- GlobeNewswire: feeds por industria (Biotechnology, Pharmaceuticals) y por organización en `rss.globenewswire.com`.
+- GlobeNewswire: feeds by industry (Biotechnology, Pharmaceuticals) and by organisation at `rss.globenewswire.com`.
 
-- Business Wire: feeds Health, Clinical Trials, Oncology y por empresa.
+- Business Wire: Health, Clinical Trials, Oncology feeds and per-company feeds.
 
-- Webs de inversores: un adaptador configurable por empresa (URL del RSS o de la página de notas), declarado en `config/watchlist.yaml`.
+- Investor websites: one configurable adapter per company (URL of the RSS or of the news page), declared in `config/watchlist.yaml`.
 
-- Filtro por palabras clave y verificación posterior contra EDGAR.
+- Keyword filter and later verification against EDGAR.
 
-### Agregadores de pago (calendar, C)
+### Paid aggregators (calendar, C)
 
-Solo como pista, con estado verified_secondary como máximo. [Benzinga](https://docs.benzinga.com/api-reference/calendar-api/get-fda.md) `GET https://api.benzinga.com/api/v2.1/calendar/fda` con `parameters[date_from]`, `parameters[date_to]`, `parameters[date_search_field]=target`, `parameters[securities]`; fechas a veces difusas (`2026-Q1`). [BiopharmaWatch](https://biopharmawatch.com/subscription) `/api/v2/pdufa/upcoming` y `/api/v2/pdufa/historical`.
+Only as a hint, with status verified_secondary at most. [Benzinga](https://docs.benzinga.com/api-reference/calendar-api/get-fda.md) `GET https://api.benzinga.com/api/v2.1/calendar/fda` with `parameters[date_from]`, `parameters[date_to]`, `parameters[date_search_field]=target`, `parameters[securities]`; dates are sometimes fuzzy (`2026-Q1`). [BiopharmaWatch](https://biopharmawatch.com/subscription) `/api/v2/pdufa/upcoming` and `/api/v2/pdufa/historical`.
 
-### openFDA y Drugs@FDA (fda, A)
+### openFDA and Drugs@FDA (fda, A)
 
-- **Base**: `https://api.fda.gov/{categoria}/{endpoint}.json`; parámetros `search` (sintaxis Lucene), `count`, `limit` (máx. 1.000), `skip`, `sort`; clave en `api_key` ([autenticación](https://open.fda.gov/apis/authentication)).
+- **Base**: `https://api.fda.gov/{category}/{endpoint}.json`; parameters `search` (Lucene syntax), `count`, `limit` (max. 1,000), `skip`, `sort`; key in `api_key` ([authentication](https://open.fda.gov/apis/authentication)).
 
-- **Endpoints**: `drug/drugsfda` (solicitudes y su historial: confirma aprobaciones y precedentes), `drug/label` (prospectos), `transparency/crl` (cartas de rechazo con motivos).
+- **Endpoints**: `drug/drugsfda` (applications and their history: confirms approvals and precedents), `drug/label` (labels), `transparency/crl` (rejection letters with reasons).
 
-- **Drugs@FDA Data Files**: ZIP con 12 tablas, actualizado cada mañana de lunes a viernes ([FDA](https://www.fda.gov/drugs/drug-approvals-and-databases/drugsfda-data-files)); copia local completa con enlaces a cartas y revisiones.
+- **Drugs@FDA Data Files**: ZIP with 12 tables, updated every morning Monday to Friday ([FDA](https://www.fda.gov/drugs/drug-approvals-and-databases/drugsfda-data-files)); complete local copy with links to letters and reviews.
 
-- **Cautela**: Drugs@FDA es histórico, no un calendario de solicitudes pendientes.
+- **Caution**: Drugs@FDA is historical, not a calendar of pending applications.
 
-- **CRL**: la FDA las publica desde julio de 2025. Pausó la publicación en tiempo real en abril de 2026 y la reanudó el 10 de julio de 2026, con una norma en preparación ([IntuitionLabs](https://intuitionlabs.ai/articles/fda-complete-response-letters-dataset)). No depender de ellas: la empresa suele anunciar la CRL antes en un 8-K.
+- **CRL**: the FDA has published them since July 2025. It paused real-time publication in April 2026 and resumed it on 10 July 2026, with a rule in preparation ([IntuitionLabs](https://intuitionlabs.ai/articles/fda-complete-response-letters-dataset)). Do not depend on them: the company usually announces the CRL earlier in an 8-K.
 
-### Comités asesores, aprobaciones y avisos (fda, A)
+### Advisory committees, approvals and notices (fda, A)
 
-| Fuente                                                                                                                          | Método                                                                                                     | Señal                                                                                                   |
+| Source                                                                                                                          | Method                                                                                                     | Signal                                                                                                  |
 |---------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------|
-| Advisory Committee Calendar (fda.gov)                                                                                           | HTML diario                                                                                                | Reunión con producto, empresa y número de solicitud; documentos de base como tarde 2 días hábiles antes |
-| Federal Register API `https://www.federalregister.gov/api/v1/documents.json`                                                    | API diaria; `conditions[agencies][]=food-and-drug-administration`, `conditions[term]="advisory committee"` | Aviso legal al menos 15 días antes de cada reunión (21 CFR 14.20)                                       |
-| Regulations.gov API v4                                                                                                          | API                                                                                                        | Expediente y comentarios del comité (número de docket del aviso)                                        |
-| Novel Drug Approvals (CDER), aprobaciones CBER, notificaciones de oncología                                                     | HTML cada 30 min en días hábiles                                                                           | Aprobación el mismo día                                                                                 |
-| RSS de la FDA: `press-releases`, `drugs`, `biologics` bajo `https://www.fda.gov/about-fda/contact-fda/stay-informed/rss-feeds/` | Feed                                                                                                       | Notas de prensa y novedades CDER y CBER                                                                 |
+| Advisory Committee Calendar (fda.gov)                                                                                           | Daily HTML                                                                                                 | Meeting with product, company and application number; briefing documents at the latest 2 business days before |
+| Federal Register API `https://www.federalregister.gov/api/v1/documents.json`                                                    | Daily API; `conditions[agencies][]=food-and-drug-administration`, `conditions[term]="advisory committee"` | Legal notice at least 15 days before each meeting (21 CFR 14.20)                                        |
+| Regulations.gov API v4                                                                                                          | API                                                                                                        | Docket and committee comments (docket number from the notice)                                           |
+| Novel Drug Approvals (CDER), CBER approvals, oncology notifications                                                             | HTML every 30 min on business days                                                                         | Same-day approval                                                                                       |
+| FDA RSS: `press-releases`, `drugs`, `biologics` under `https://www.fda.gov/about-fda/contact-fda/stay-informed/rss-feeds/`     | Feed                                                                                                       | Press releases and CDER and CBER news                                                                   |
 
-### Inspecciones y fabricación (fda, B)
+### Inspections and manufacturing (fda, B)
 
-[FDA Data Dashboard](https://www.fda.gov/about-fda/performance-data/fda-data-dashboard): inspecciones (NAI, VAI, OAI), citas 483 y acciones de cumplimiento (warning letters). Actualización semanal, solo acciones finales; API con registro y descargas XLSX. Se enlaza por FEI de cada planta declarada. Regla: la ausencia de información de fabricación no equivale a riesgo bajo.
+[FDA Data Dashboard](https://www.fda.gov/about-fda/performance-data/fda-data-dashboard): inspections (NAI, VAI, OAI), 483 citations and enforcement actions (warning letters). Weekly update, final actions only; API with registration and XLSX downloads. It is linked by the FEI of each declared plant. Rule: the absence of manufacturing information does not mean low risk.
 
-## Conectores: clínico y congresos
+## Connectors: clinical and conferences
 
-Registros de ensayos y literatura tienen APIs gratuitas y estables. Los congresos no tienen API: se combinan comunicados, suplementos de revista y un calendario de embargos mantenido a mano.
+Trial registries and literature have free, stable APIs. Conferences have no API: press releases, journal supplements and a manually maintained embargo calendar are combined.
 
 ### ClinicalTrials.gov API v2 (clinical, A)
 
-- **Endpoints**: `https://clinicaltrials.gov/api/v2/studies` (búsqueda) y `/studies/{NCT}` (ficha). Sin clave; unas 50 peticiones por minuto por IP; JSON o CSV; paginación con `pageToken` / `nextPageToken`.
+- **Endpoints**: `https://clinicaltrials.gov/api/v2/studies` (search) and `/studies/{NCT}` (record). No key; about 50 requests per minute per IP; JSON or CSV; pagination with `pageToken` / `nextPageToken`.
 
-- **Parámetros útiles**: `query.term`, `query.intr` (intervención), `query.spons`, `query.cond`, `filter.overallStatus`, `fields` para reducir la respuesta.
+- **Useful parameters**: `query.term`, `query.intr` (intervention), `query.spons`, `query.cond`, `filter.overallStatus`, `fields` to reduce the response.
 
-- **Guardar**: `protocolSection`, `resultsSection`, `derivedSection` completos como fichero en raw/; cada día se compara con la copia anterior.
+- **Store**: `protocolSection`, `resultsSection`, `derivedSection` in full as a file in raw/; each day it is compared with the previous copy.
 
-- **Fechas distintas, nunca mezclar**: `primaryCompletionDate`, `completionDate`, `resultsFirstPostDate`, `lastUpdatePostDate`. Ninguna es una fecha PDUFA.
+- **Different dates, never mix**: `primaryCompletionDate`, `completionDate`, `resultsFirstPostDate`, `lastUpdatePostDate`. None of them is a PDUFA date.
 
-- **Historial**: la API da la versión actual. El sistema guarda una copia diaria de cada ensayo vigilado y registra diferencias (endpoint primario, tamaño, fechas, estado). Para el pasado, usar AACT.
+- **History**: the API gives the current version. The system stores a daily copy of each watched trial and records differences (primary endpoint, size, dates, status). For the past, use AACT.
 
-- **Enlace**: un NCT se enlaza a fármaco e indicación; un ensayo puede probar varios fármacos (combinaciones).
+- **Link**: an NCT is linked to drug and indication; a trial may test several drugs (combinations).
 
-### AACT (clinical y backtest, B)
+### AACT (clinical and backtest, B)
 
-Base PostgreSQL de CTTI que descarga ClinicalTrials.gov completo cada día, con acceso en la nube mediante cuenta gratuita y copias completas descargables, incluidas versiones antiguas ([AACT](https://aact.ctti-clinicaltrials.org/)). Sirve para reconstruir cómo era un ensayo en una fecha pasada y para cohortes del backtest. No es fuente de fechas PDUFA.
+PostgreSQL database from CTTI that downloads all of ClinicalTrials.gov every day, with cloud access through a free account and downloadable full copies, including old versions ([AACT](https://aact.ctti-clinicaltrials.org/)). It is used to reconstruct what a trial looked like on a past date and for backtest cohorts. It is not a source of PDUFA dates.
 
-### Literatura
+### Literature
 
-| Fuente                                                               | Endpoint                                                                                     | Acceso                                                                                     | Uso                                                                    |
+| Source                                                               | Endpoint                                                                                     | Access                                                                                     | Use                                                                    |
 |----------------------------------------------------------------------|----------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------|------------------------------------------------------------------------|
-| [PubMed E-utilities](https://www.ncbi.nlm.nih.gov/books/NBK25497/)   | `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi`, `efetch.fcgi`, `esummary.fcgi` | 3 req/s; 10 con clave; enviar `tool` y `email`                                             | Artículos por INN, código de desarrollo y NCT                          |
-| Europe PMC                                                           | `https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=&resultType=core&format=json` | Sin clave                                                                                  | PubMed, PMC, preprints y suplementos de congresos en una búsqueda      |
-| Crossref                                                             | `https://api.crossref.org/works?query.bibliographic=&mailto=`                                | Sin clave; `mailto`                                                                        | Metadatos por DOI, suplementos por ISSN, correcciones y retractaciones |
-| [OpenAlex](https://groups.google.com/g/openalex-users/c/rI1GIAySpVQ) | `https://api.openalex.org/works`                                                             | Clave gratuita obligatoria desde el 13 de febrero de 2026; presupuesto diario por créditos | Trabajos relacionados y citas                                          |
-| [bioRxiv / medRxiv](https://api.biorxiv.org)                         | `https://api.biorxiv.org/details/{server}/{desde}/{hasta}/{cursor}`                          | Sin clave                                                                                  | No busca por palabra: descargar la ventana diaria y filtrar en local   |
+| [PubMed E-utilities](https://www.ncbi.nlm.nih.gov/books/NBK25497/)   | `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi`, `efetch.fcgi`, `esummary.fcgi` | 3 req/s; 10 with key; send `tool` and `email`                                              | Articles by INN, development code and NCT                              |
+| Europe PMC                                                           | `https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=&resultType=core&format=json` | No key                                                                                     | PubMed, PMC, preprints and conference supplements in one search        |
+| Crossref                                                             | `https://api.crossref.org/works?query.bibliographic=&mailto=`                                | No key; `mailto`                                                                           | Metadata by DOI, supplements by ISSN, corrections and retractions      |
+| [OpenAlex](https://groups.google.com/g/openalex-users/c/rI1GIAySpVQ) | `https://api.openalex.org/works`                                                             | Free key required since 13 February 2026; daily budget by credits                          | Related works and citations                                            |
+| [bioRxiv / medRxiv](https://api.biorxiv.org)                         | `https://api.biorxiv.org/details/{server}/{desde}/{hasta}/{cursor}`                          | No key                                                                                     | No keyword search: download the daily window and filter locally        |
 
-**Reglas**: deduplicar por DOI, luego PMID/PMCID, luego título normalizado. Clasificar el tipo (artículo original, revisión, editorial, preprint, abstract de congreso, nota de prensa). Guardar fecha online, fecha formal y fecha de ingestión. Descargar texto completo solo con licencia abierta; del resto, metadatos y enlace.
+**Rules**: deduplicate by DOI, then PMID/PMCID, then normalised title. Classify the type (original article, review, editorial, preprint, conference abstract, press release). Store online date, formal date and ingestion date. Download full text only with an open licence; for the rest, metadata and link.
 
-### Congresos (clinical, B)
+### Conferences (clinical, B)
 
-No hay API pública de abstracts para ASCO, ESMO ni ASH. El conector admite cuatro modos: `official_api`, `public_rss`, `public_html_permitted` y `manual_upload_licensed`. Fuentes, de más a menos fiable:
+There is no public abstract API for ASCO, ESMO or ASH. The connector supports four modes: `official_api`, `public_rss`, `public_html_permitted` and `manual_upload_licensed`. Sources, from most to least reliable:
 
-1.  **Comunicados de la empresa**: anuncian la presentación con número de abstract y suelen colgar las diapositivas en un 8-K (EX-99.2). Ya los captura el calendario.
+1.  **Company press releases**: they announce the presentation with the abstract number and usually post the slides in an 8-K (EX-99.2). The calendar already captures them.
 
-2.  **Suplementos de revista**: ASCO publica en Journal of Clinical Oncology y ESMO en Annals of Oncology; se localizan por Europe PMC o Crossref.
+2.  **Journal supplements**: ASCO publishes in Journal of Clinical Oncology and ESMO in Annals of Oncology; they are located through Europe PMC or Crossref.
 
-3.  **Calendario de embargos** en `config/conferences.yaml`: congreso, fechas, hora de publicación de abstracts ordinarios y late-breaking, en UTC (`embargo_until`). En ESMO los late-breaking se hacen públicos al empezar su sesión. El sistema programa una búsqueda justo después de cada embargo y nunca ingiere material antes de esa hora.
+3.  **Embargo calendar** in `config/conferences.yaml`: conference, dates, publication time of regular and late-breaking abstracts, in UTC (`embargo_until`). At ESMO the late-breaking abstracts become public when their session starts. The system schedules a search right after each embargo and never ingests material before that time.
 
-4.  **Webs de los congresos** (ASCO Meeting Library, OncologyPRO): solo páginas públicas y respetando términos; pósters, diapositivas y vídeos suelen requerir membresía.
+4.  **Conference websites** (ASCO Meeting Library, OncologyPRO): public pages only and respecting terms; posters, slides and videos usually require membership.
 
-### Extracción de resultados
+### Results extraction
 
-Cada documento clínico se convierte en filas de la tabla `fact`: ensayo, brazo, endpoint y su nivel (primario, secundario clave, exploratorio), métrica, valor, IC 95 %, p, n y fecha de corte de datos, cada una con su cita. Las comprobaciones y la revisión a mano están en las reglas de verdad.
+Each clinical document is turned into rows of the `fact` table: trial, arm, endpoint and its level (primary, key secondary, exploratory), metric, value, 95% CI, p, n and data cut-off date, each with its quote. The checks and the manual review are in the truth rules.
 
-## Conectores: mercado, identificadores y mercados de predicción
+## Connectors: market, identifiers and prediction markets
 
-Los datos de mercado van detrás de una interfaz única para poder cambiar de proveedor. Los mercados de predicción son opcionales: aportan una probabilidad cuando existen y nunca bloquean el resto.
+Market data goes behind a single interface so the provider can be changed. Prediction markets are optional: they provide a probability when they exist and never block the rest.
 
-### Interfaz `MarketDataProvider`
+### `MarketDataProvider` interface
 
-Métodos: `get_daily_bars`, `get_corporate_actions`, `get_shares_outstanding`, `get_option_chain`, `get_quotes`. Adaptadores:
+Methods: `get_daily_bars`, `get_corporate_actions`, `get_shares_outstanding`, `get_option_chain`, `get_quotes`. Adapters:
 
-| Proveedor                                    | Uso                                                                                                                                                            | Notas                                                                                                                                                                                                                                                                                       |
+| Provider                                     | Use                                                                                                                                                            | Notes                                                                                                                                                                                                                                                                                       |
 |----------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Massive (antes Polygon.io)                   | Barras diarias `GET /v2/aggs/ticker/{t}/range/1/day/{desde}/{hasta}` y cadena de opciones `GET /v3/snapshot/options/{subyacente}` en `https://api.massive.com` | Volatilidad implícita y griegas solo actuales, calculadas desde el punto medio; sin histórico de volatilidad ([Massive](https://massive.com/knowledge-base/article/why-are-greeks-and-implied-volatility-missing-from-the-options-snapshot)). Snapshot no incluido en el plan Options Basic |
-| Interactive Brokers (TWS API vía IB Gateway) | Volatilidad implícita histórica con barras `OPTION_IMPLIED_VOLATILITY`; cadenas y cotizaciones                                                                 | Requiere IB Gateway en marcha y suscripciones de datos (OPRA), facturadas por mes completo ([IBKR](https://www.interactivebrokers.com/docs/tws-api/doc/market-data-historical/historical-bar-what-to-show/option-implied-volatility))                                                       |
-| `yfinance`                                   | Opción por defecto al empezar: precios, volumen y cadenas de opciones con volatilidad implícita, para acumular histórico desde el primer día                   | No oficial y de uso personal; si falla, se cambia MARKET_PROVIDER y el resto sigue igual                                                                                                                                                                                                    |
+| Massive (formerly Polygon.io)                | Daily bars `GET /v2/aggs/ticker/{t}/range/1/day/{desde}/{hasta}` and option chain `GET /v3/snapshot/options/{subyacente}` at `https://api.massive.com`        | Implied volatility and Greeks are current only, computed from the midpoint; no volatility history ([Massive](https://massive.com/knowledge-base/article/why-are-greeks-and-implied-volatility-missing-from-the-options-snapshot)). Snapshot not included in the Options Basic plan          |
+| Interactive Brokers (TWS API via IB Gateway) | Historical implied volatility with `OPTION_IMPLIED_VOLATILITY` bars; chains and quotes                                                                         | Requires IB Gateway running and data subscriptions (OPRA), billed per full month ([IBKR](https://www.interactivebrokers.com/docs/tws-api/doc/market-data-historical/historical-bar-what-to-show/option-implied-volatility))                                                                  |
+| `yfinance`                                   | Default option at the start: prices, volume and option chains with implied volatility, to accumulate history from day one                                      | Unofficial and for personal use; if it fails, change MARKET_PROVIDER and the rest stays the same                                                                                                                                                                                            |
 
-**Regla**: como ningún proveedor asequible da volatilidad implícita histórica fiable, el sistema guarda su propia instantánea diaria de opciones desde que un evento entra en el calendario. Splits, contrasplits, cambios de ticker y días sin negociación se registran explícitamente.
+**Rule**: since no affordable provider gives reliable historical implied volatility, the system stores its own daily options snapshot from the moment an event enters the calendar. Splits, reverse splits, ticker changes and non-trading days are recorded explicitly.
 
-### Otras fuentes de mercado
+### Other market sources
 
-- **FINRA Short Interest** ([FINRA](https://www.finra.org:443/finra-data/browse-catalog/equity-short-interest)): consolidado dos veces al mes, por la Query API de `api.finra.org` o ficheros en `cdn.finra.org`. No confundir con el volumen diario en corto, que es otro fichero.
+- **FINRA Short Interest** ([FINRA](https://www.finra.org:443/finra-data/browse-catalog/equity-short-interest)): consolidated twice a month, through the Query API at `api.finra.org` or files at `cdn.finra.org`. Do not confuse it with daily short volume, which is a different file.
 
-- **SEC XBRL** (`companyfacts`): caja, inversiones a corto plazo, deuda, gasto operativo, acciones en circulación. Meses de caja = caja ÷ gasto trimestral medio × 3. Usar siempre el mismo concepto (básico o diluido) y fijar la fecha del precio.
+- **SEC XBRL** (`companyfacts`): cash, short-term investments, debt, operating expenses, shares outstanding. Months of cash = cash ÷ average quarterly spending × 3. Always use the same concept (basic or diluted) and fix the price date.
 
-- **OpenFIGI** `POST https://api.openfigi.com/v3/mapping`: valida ticker, mercado e identificador; cabecera `X-OPENFIGI-APIKEY` opcional (10 identificadores por petición sin clave, 100 con clave).
+- **OpenFIGI** `POST https://api.openfigi.com/v3/mapping`: validates ticker, market and identifier; optional `X-OPENFIGI-APIKEY` header (10 identifiers per request without a key, 100 with a key).
 
 ### Kalshi (predict, B)
 
-- **Base**: `https://external-api.kalshi.com/trade-api/v2` (también funciona `https://api.elections.kalshi.com/trade-api/v2`). Lectura sin autenticación ([docs](https://docs.kalshi.com/getting_started)).
+- **Base**: `https://external-api.kalshi.com/trade-api/v2` (`https://api.elections.kalshi.com/trade-api/v2` also works). Reading without authentication ([docs](https://docs.kalshi.com/getting_started)).
 
-- **Jerarquía**: Series → Events → Markets. Endpoints: `/series/{s}`, `/events?series_ticker=&status=open&with_nested_markets=true`, `/markets?limit=`, `/markets/{ticker}`, `/markets/{ticker}/orderbook`, `/series/{s}/markets/{ticker}/candlesticks`. Para mercados ya liquidados, comprobar en la documentación las rutas históricas.
+- **Hierarchy**: Series → Events → Markets. Endpoints: `/series/{s}`, `/events?series_ticker=&status=open&with_nested_markets=true`, `/markets?limit=`, `/markets/{ticker}`, `/markets/{ticker}/orderbook`, `/series/{s}/markets/{ticker}/candlesticks`. For already settled markets, check the documentation for the historical routes.
 
-- **Series de interés**: `KXFDAAPPROVE` (aprobación antes de una fecha) y `KXFDAANNOUNCE`; descubrir nuevas series de biotecnología recorriendo `/series` una vez al día.
+- **Series of interest**: `KXFDAAPPROVE` (approval before a date) and `KXFDAANNOUNCE`; discover new biotech series by walking through `/series` once a day.
 
-- **Reglas del contrato** ([FDAAPPROVAL](https://kalshi-public-docs.s3.amazonaws.com/contract_terms/FDAAPPROVAL.pdf)): cuentan la aprobación tradicional, la acelerada y la aprobación con REMS; una CRL resuelve «No» salvo aprobación posterior antes de la fecha; una extensión de plazo no es aprobación; si el comité vota en contra y la FDA aprueba, resuelve «Sí».
+- **Contract rules** ([FDAAPPROVAL](https://kalshi-public-docs.s3.amazonaws.com/contract_terms/FDAAPPROVAL.pdf)): traditional, accelerated and approval with REMS all count; a CRL resolves "No" unless approved later before the date; a deadline extension is not an approval; if the committee votes against and the FDA approves, it resolves "Yes".
 
-- **Guardar**: ticker, evento, texto íntegro de las reglas, apertura y cierre en UTC, oferta, demanda, último, volumen, interés abierto, estado y hora de la instantánea.
+- **Store**: ticker, event, full text of the rules, open and close in UTC, bid, ask, last, volume, open interest, status and snapshot time.
 
-- **Sin conexión a cuenta ni órdenes.**
+- **No account connection and no orders.**
 
 ### Polymarket (predict, B)
 
 | API                    | Host                               | Endpoints                                                                     |
 |------------------------|------------------------------------|-------------------------------------------------------------------------------|
-| Gamma (descubrimiento) | `https://gamma-api.polymarket.com` | `/public-search?q=`, `/events`, `/markets`, `/tags`                           |
-| CLOB (precios)         | `https://clob.polymarket.com`      | `/price`, `/midpoint`, `/book`, `/prices-history?market=&interval=&fidelity=` |
+| Gamma (discovery)      | `https://gamma-api.polymarket.com` | `/public-search?q=`, `/events`, `/markets`, `/tags`                           |
+| CLOB (prices)          | `https://clob.polymarket.com`      | `/price`, `/midpoint`, `/book`, `/prices-history?market=&interval=&fidelity=` |
 | Data                   | `https://data-api.polymarket.com`  | `/oi`, `/trades`                                                              |
 
-Flujo: `public-search` → `clobTokenIds` (índice 0 = Sí) y `conditionId` → precio, libro e histórico ([docs](https://docs.polymarket.com/market-data/overview)). Sin claves, sin carteras, sin órdenes. Seguir la paginación que indique la documentación vigente.
+Flow: `public-search` → `clobTokenIds` (index 0 = Yes) and `conditionId` → price, book and history ([docs](https://docs.polymarket.com/market-data/overview)). No keys, no wallets, no orders. Follow the pagination given by the current documentation.
 
 ### Endpoint Arena (predict, C)
 
-API de solo lectura en `https://endpointarena.com`: `/api/current-season`, `/api/v1/markets`, `/api/v1/markets/{id}`, `/api/leaderboard`, y un MCP ([API](https://endpointarena.com/api)). En la temporada 8 solo operan modelos de IA con 100.000 dólares simulados cada uno ([método](https://endpointarena.com/method)). Guardar con origen `simulated_ai`; nunca tratarlo como precio negociable ni sumarlo a mercados reales.
+Read-only API at `https://endpointarena.com`: `/api/current-season`, `/api/v1/markets`, `/api/v1/markets/{id}`, `/api/leaderboard`, and an MCP ([API](https://endpointarena.com/api)). In season 8 only AI models trade, each with 100,000 simulated dollars ([method](https://endpointarena.com/method)). Store with origin `simulated_ai`; never treat it as a tradable price or add it to real markets.
 
-### Emparejar contrato y evento
+### Matching contract and event
 
-Un contrato se enlaza a un evento solo si coinciden fármaco, indicación, autoridad que decide y ventana temporal. Se guarda el grado de coincidencia; si es ambiguo, queda pendiente de revisión humana. Una fecha de contrato («antes del 1 de julio») distinta de la fecha PDUFA se marca, porque una extensión de 3 meses cambia el resultado.
+A contract is linked to an event only if drug, indication, deciding authority and time window match. The degree of match is stored; if it is ambiguous, it stays pending human review. A contract date ("before 1 July") that differs from the PDUFA date is flagged, because a 3-month extension changes the outcome.
 
 ### EMA (fda, C)
 
-El CHMP publica opiniones el viernes siguiente a cada pleno mensual y la Comisión Europea decide después ([EMA](https://www.ema.europa.eu/da/medicines/what-we-publish-medicines-when)). Fuentes: XLSX de `https://www.ema.europa.eu/en/medicines/download-medicine-data`, la lista mensual de medicamentos en evaluación y los resúmenes de cada pleno del CHMP. Calendario de plenos en `config/conferences.yaml`.
+The CHMP publishes opinions on the Friday after each monthly plenary and the European Commission decides afterwards ([EMA](https://www.ema.europa.eu/da/medicines/what-we-publish-medicines-when)). Sources: XLSX from `https://www.ema.europa.eu/en/medicines/download-medicine-data`, the monthly list of medicines under evaluation and the summaries of each CHMP plenary. Plenary calendar in `config/conferences.yaml`.
 
-## Reglas de verdad
+## Truth rules
 
-Cada tipo de dato tiene un orden de fuentes. Si dos fuentes discrepan, se muestran ambas y el dato queda en conflicto hasta que una fuente primaria lo resuelva.
+Each type of data has an order of sources. If two sources disagree, both are shown and the data stays in conflict until a primary source resolves it.
 
-| Dato                    | Orden de fuentes                                                       | Regla                                                                                 |
+| Data                    | Order of sources                                                       | Rule                                                                                  |
 |-------------------------|------------------------------------------------------------------------|---------------------------------------------------------------------------------------|
-| Fecha PDUFA             | 8-K, 6-K o comunicado de la empresa → FDA → pdufa.bio u otro agregador | Sin día exacto no hay cuenta atrás; una extensión añade una fila nueva                |
-| Decisión de la FDA      | Carta o página de la FDA → 8-K o comunicado de la empresa              | Una CRL casi siempre se conoce por la empresa; nunca «aprobado» por falta de noticias |
-| Eficacia y seguridad    | Artículo → resultados del registro → abstract → nota de prensa         | Una p nominal no es significación confirmatoria; distinguir variables subrogadas      |
-| Caja y deuda            | XBRL de la SEC y el 10-Q                                               | Siempre el mismo periodo y la misma unidad                                            |
-| Probabilidad de mercado | Libro de órdenes en el momento                                         | Punto medio entre oferta y demanda; con diferencial ancho, se muestra como rango      |
+| PDUFA date              | Company 8-K, 6-K or press release → FDA → pdufa.bio or other aggregator | Without an exact day there is no countdown; an extension adds a new row               |
+| FDA decision            | FDA letter or page → company 8-K or press release                      | A CRL is almost always known through the company; never "approved" for lack of news   |
+| Efficacy and safety     | Article → registry results → abstract → press release                  | A nominal p is not confirmatory significance; distinguish surrogate endpoints         |
+| Cash and debt           | SEC XBRL and the 10-Q                                                  | Always the same period and the same unit                                              |
+| Market probability      | Order book at the moment                                               | Midpoint between bid and ask; with a wide spread, shown as a range                    |
 
-### Cifras clínicas
+### Clinical figures
 
-- Comprobaciones sencillas al extraer: la p entre 0 y 1, el intervalo contiene la estimación, el HR es positivo y el n cuadra con el ensayo. Si falla, la cifra no se acepta.
+- Simple checks on extraction: p between 0 and 1, the interval contains the estimate, HR is positive and n matches the trial. If one fails, the figure is not accepted.
 
-- Si dos documentos dan cifras distintas, se guardan ambas como conflicto.
+- If two documents give different figures, both are stored as a conflict.
 
-- Si el texto no deja claro el denominador, la población o el endpoint, la cifra queda como ambigua y vacía, nunca con el valor más probable.
+- If the text does not make the denominator, population or endpoint clear, the figure is left ambiguous and empty, never with the most likely value.
 
-- En los eventos A, las 3–5 cifras que sostienen la tesis (resultado del endpoint primario, intervalo, p, seguridad clave) se revisan a mano antes de usarse.
+- In A events, the 3–5 figures that support the thesis (primary endpoint result, interval, p, key safety) are reviewed by hand before being used.
 
-### Todo lo descargado es dato
+### Everything downloaded is data
 
-El texto de una web o de un PDF nunca es una instrucción para el sistema ni para el agente.
+The text of a web page or a PDF is never an instruction for the system or for the agent.
 
-## Modelo de datos
+## Data model
 
-Trece tablas en un archivo SQLite. Los documentos y las cadenas de opciones van como ficheros; la base guarda su ruta.
+Thirteen tables in one SQLite file. Documents and option chains go as files; the database stores their path.
 
-| Tabla             | Campos principales                                                                                                                                                                                                              |
+| Table             | Main fields                                                                                                                                                                                                                     |
 |-------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `company`         | id, name, ticker, cik                                                                                                                                                                                                           |
-| `drug`            | id, company_id, name, aliases (INN, marca, códigos de desarrollo), partners (texto: licenciante, socios, regalías), weight (monoactivo, principal, secundario)                                                                  |
-| `event`           | id, drug_id, kind (PDUFA, ADCOMM, READOUT), indication, application (NDA, BLA, sNDA…), review (prioritaria, estándar), tier (A, B, C), tier_reason, status (pendiente, decidido, cancelado), outcome, outcome_date, outcome_url |
-| `event_date`      | id, event_id, date, precision (día, mes, trimestre), state, source_url, quote, published_at, seen_at, replaced_at                                                                                                               |
+| `drug`            | id, company_id, name, aliases (INN, brand, development codes), partners (text: licensor, partners, royalties), weight (single-asset, main, secondary)                                                                           |
+| `event`           | id, drug_id, kind (PDUFA, ADCOMM, READOUT), indication, application (NDA, BLA, sNDA…), review (priority, standard), tier (A, B, C), tier_reason, status (pending, decided, cancelled), outcome, outcome_date, outcome_url        |
+| `event_date`      | id, event_id, date, precision (day, month, quarter), state, source_url, quote, published_at, seen_at, replaced_at                                                                                                               |
 | `document`        | id, url, source, title, published_at, seen_at, path                                                                                                                                                                             |
 | `fact`            | id, event_id, field, value, unit, state, source_url, quote, published_at, seen_at, human_checked                                                                                                                                |
 | `trial`           | nct_id, drug_id, phase, primary_endpoint, enrollment, status, last_seen_at, last_change                                                                                                                                         |
@@ -398,188 +398,188 @@ Trece tablas en un archivo SQLite. Los documentos y las cadenas de opciones van 
 | `paper_trade`     | id, event_id, rule, entry_date, entry_price, exit_date, exit_price, return, xbi_return, notes                                                                                                                                   |
 | `source_status`   | source, last_ok_at, last_error, last_error_at                                                                                                                                                                                   |
 
-- `published_at` y `seen_at` en cada dato permiten reconstruir lo que se sabía en una fecha pasada.
+- `published_at` and `seen_at` on each data point make it possible to reconstruct what was known on a past date.
 
-- Una fecha que cambia no se edita: se rellena `replaced_at` en la fila vieja y se añade una nueva.
+- A date that changes is not edited: `replaced_at` is filled in on the old row and a new one is added.
 
-- Las cadenas de opciones se guardan completas en `market/<fecha>/<ticker>.json`; `implied_move` se calcula después, cuando haga falta.
+- Option chains are stored in full in `market/<date>/<ticker>.json`; `implied_move` is computed later, when needed.
 
-- Horas en UTC; se muestran en hora de Madrid. Los horarios de mercado de EE. UU. se interpretan en America/New_York.
+- Times in UTC; displayed in Madrid time. US market hours are interpreted in America/New_York.
 
-## Análisis: triaje, tres estimaciones y reglas de operación
+## Analysis: triage, three estimates and trading rules
 
-Primero se decide qué eventos merecen trabajo. Después se responden tres preguntas por separado: si se aprobará, cuánto se movería la acción y si una regla de operación fija habría ganado dinero. Nada de modelos complejos hasta que haya datos que los justifiquen.
+First it is decided which events deserve work. Then three questions are answered separately: whether it will be approved, how much the stock would move, and whether a fixed trading rule would have made money. No complex models until there is data to justify them.
 
-### Triaje
+### Triage
 
-Una clasificación sencilla con datos que ya existen, con umbrales en `config/triage.yaml`:
+A simple classification using data that already exists, with thresholds in `config/triage.yaml`:
 
-| Señal                          | Cómo se mide                                                                            | Por qué importa                                              |
+| Signal                         | How it is measured                                                                      | Why it matters                                               |
 |--------------------------------|-----------------------------------------------------------------------------------------|--------------------------------------------------------------|
-| Peso del fármaco en la empresa | Marcado a mano en `watchlist.yaml` (monoactivo, principal, secundario) y capitalización | Una aprobación apenas mueve a una farmacéutica diversificada |
-| Movimiento implícito           | Opciones, si las hay                                                                    | Cuánto cree el mercado que puede variar el precio            |
-| Consenso                       | Precio en Kalshi o Polymarket, si existe                                                | Por encima del 90 % queda poco margen                        |
-| Incertidumbre abierta          | Comité convocado, extensión, CRL previa, datos discutidos                               | Donde hay dudas hay posibles errores de precio               |
-| Liquidez                       | Volumen medio diario en dólares                                                         | Sin liquidez no hay operación razonable                      |
+| Weight of the drug in the company | Marked by hand in `watchlist.yaml` (single-asset, main, secondary) and market cap    | An approval barely moves a diversified pharma company        |
+| Implied move                   | Options, if any                                                                         | How much the market thinks the price can change              |
+| Consensus                      | Price on Kalshi or Polymarket, if it exists                                             | Above 90% there is little margin left                        |
+| Open uncertainty               | Committee convened, extension, prior CRL, disputed data                                 | Where there are doubts there may be pricing errors           |
+| Liquidity                      | Average daily volume in dollars                                                         | Without liquidity there is no reasonable trade               |
 
-- **A**: expediente completo e informe. **B**: ficha breve y seguimiento. **C**: solo calendario.
+- **A**: full dossier and report. **B**: short sheet and follow-up. **C**: calendar only.
 
-- Los umbrales empiezan a ojo y se ajustan con los resultados.
+- Thresholds start as rough estimates and are adjusted with the results.
 
-### 1. Probabilidad de aprobación
+### 1. Probability of approval
 
-- Tasa base por categoría (tipo de solicitud, revisión, área, comité y su voto, resubmisión), con estadísticas publicadas y los eventos que el sistema va cerrando.
+- Base rate by category (application type, review, area, committee and its vote, resubmission), using published statistics and the events the system closes over time.
 
-- Ajuste con una lista corta de factores, como máximo seis, cada uno con su evidencia. El LLM propone; la persona aprueba.
+- Adjustment with a short list of factors, six at most, each with its evidence. The LLM proposes; the person approves.
 
-- Resultado como rango (por ejemplo, 70–80 %), nunca como una cifra exacta.
+- Result as a range (for example, 70–80%), never as an exact figure.
 
-- Ningún modelo estadístico ajustado hasta tener al menos 100 eventos resueltos; mientras tanto, la referencia es la tasa base.
+- No fitted statistical model until there are at least 100 resolved events; in the meantime, the reference is the base rate.
 
-### 2. Movimiento de la acción en cada escenario
+### 2. Stock move in each scenario
 
-- Escenarios: aprobación y CRL; si aplica, aprobación restringida o retraso.
+- Scenarios: approval and CRL; if applicable, restricted approval or delay.
 
-- Rango de movimiento por escenario a partir del movimiento implícito de las opciones y de casos comparables (tamaño, monoactivo o no, área).
+- Move range per scenario based on the options' implied move and on comparable cases (size, single-asset or not, area).
 
-- Con poca caja, contar con una ampliación de capital tras una aprobación.
+- With little cash, expect a capital raise after an approval.
 
-Movimiento implícito del evento, con un vencimiento antes de la fecha (T₁, σ₁) y otro justo después (T₂, σ₂), T en años:
+Implied move of the event, with an expiry before the date (T₁, σ₁) and another just after (T₂, σ₂), T in years:
 
 ``` text
 \sigma_{evento} \approx \sqrt{\sigma_2^2 T_2 - \sigma_1^2 T_1}
 ```
 
-Contraste rápido: precio del straddle at-the-money del vencimiento posterior dividido por el precio de la acción.
+Quick check: price of the at-the-money straddle of the later expiry divided by the stock price.
 
-### 3. Reglas de operación
+### 3. Trading rules
 
-Se fijan en `config/rules.yaml` antes de cualquier backtest y no se cambian después de ver resultados. Una regla nueva solo se evalúa con eventos futuros.
+They are fixed in `config/rules.yaml` before any backtest and are not changed after seeing results. A new rule is evaluated only with future events.
 
-| Regla | Entrada                                        | Salida                                      |
+| Rule  | Entry                                          | Exit                                        |
 |-------|------------------------------------------------|---------------------------------------------|
-| R0    | Ninguna                                        | Referencia                                  |
-| R1    | Cierre del día hábil anterior a la fecha PDUFA | Primera apertura tras el anuncio            |
-| R2    | Igual que R1                                   | Cierre del quinto día hábil tras el anuncio |
+| R0    | None                                           | Reference                                   |
+| R1    | Close of the business day before the PDUFA date | First open after the announcement          |
+| R2    | Same as R1                                     | Close of the fifth business day after the announcement |
 
-- Si la FDA decide antes de la entrada, el evento se excluye y se cuenta.
+- If the FDA decides before the entry, the event is excluded and counted.
 
-- Anuncio fuera de sesión: la salida es la primera apertura disponible.
+- Announcement outside trading hours: the exit is the first available open.
 
-- Suspensión de cotización: primer precio tras la reanudación.
+- Trading halt: first price after resumption.
 
-- Costes: diferencial medio más una comisión fija configurada.
+- Costs: average spread plus a configured fixed commission.
 
-- Ampliación de capital anunciada en la ventana: se registra y cuenta en el resultado.
+- Capital raise announced in the window: it is recorded and counted in the result.
 
-- Resultado también frente al índice XBI.
+- Result also against the XBI index.
 
-Valor esperado de la regla, con p de la pregunta 1, G y L (subida y caída) de la pregunta 2 y c los costes:
+Expected value of the rule, with p from question 1, G and L (rise and fall) from question 2 and c the costs:
 
 ``` text
 EV = p \cdot G - (1 - p) \cdot L - c
 ```
 
-### Medir si funciona
+### Measuring whether it works
 
-- Puntuación de Brier de la probabilidad de aprobación frente a la tasa base y al mercado de predicción.
+- Brier score of the approval probability against the base rate and the prediction market.
 
-- Resultado de R1 y R2 en operativa simulada, con el número de eventos y sin reoptimizar.
+- Result of R1 and R2 in simulated trading, with the number of events and without re-optimising.
 
-- Solo cuentan los eventos con informe guardado antes de la decisión.
+- Only events with a report saved before the decision count.
 
-### Cuándo el informe es solo de investigación
+### When the report is research only
 
-Si falta la fecha confirmada, no está claro quién se beneficia del fármaco, el precio está desfasado o una cifra clave no está revisada, el informe sale marcado `RESEARCH_ONLY`.
+If the confirmed date is missing, it is unclear who benefits from the drug, the price is stale or a key figure has not been reviewed, the report is marked `RESEARCH_ONLY`.
 
-## Interfaz: comandos y configuración
+## Interface: commands and configuration
 
-Un único comando, `fdaci`, para ti, para un agente de código y para las tareas programadas. Cada módulo se lanza solo o todos juntos.
+A single command, `fdaci`, for you, for a coding agent and for scheduled tasks. Each module is launched on its own or all together.
 
 ``` text
-fdaci init                    # crea FDACI_HOME, .env y configuración de ejemplo
-fdaci db upgrade              # aplica migraciones
-fdaci status                  # última ejecución correcta y último error de cada fuente
+fdaci init                    # creates FDACI_HOME, .env and example configuration
+fdaci db upgrade              # applies migrations
+fdaci status                  # last successful run and last error of each source
 
-fdaci run calendar            # pdufa.bio, EDGAR, comunicados
-fdaci run fda                 # decisiones, comités, precedentes
-fdaci run market              # precios y opciones de las empresas del calendario
-fdaci run triage              # recalcula niveles A, B y C
-fdaci run clinical            # ensayos y literatura de eventos A y B
-fdaci run predict             # Kalshi y Polymarket
-fdaci run all                 # todo, en este orden
+fdaci run calendar            # pdufa.bio, EDGAR, press releases
+fdaci run fda                 # decisions, committees, precedents
+fdaci run market              # prices and options of the calendar companies
+fdaci run triage              # recomputes tiers A, B and C
+fdaci run clinical            # trials and literature for A and B events
+fdaci run predict             # Kalshi and Polymarket
+fdaci run all                 # everything, in this order
 
-fdaci calendar [--days 90]    # próximos eventos
-fdaci event <id|ticker>       # ficha del evento
-fdaci report <id>             # informe; se guarda con la fecha y no sobrescribe
-fdaci digest                  # resumen del día en digest/<fecha>.md
-fdaci backtest                # reglas R1 y R2 sobre eventos resueltos
-fdaci schedule --format crontab|launchd|openclaw   # programación recomendada
+fdaci calendar [--days 90]    # upcoming events
+fdaci event <id|ticker>       # event sheet
+fdaci report <id>             # report; saved with the date and does not overwrite
+fdaci digest                  # summary of the day in digest/<date>.md
+fdaci backtest                # rules R1 and R2 on resolved events
+fdaci schedule --format crontab|launchd|openclaw   # recommended scheduling
 ```
 
-- `--json` en los comandos de consulta, para que otro programa lea la salida.
+- `--json` on the query commands, so another program can read the output.
 
-- `--quiet` imprime solo novedades; si no hay ninguna, imprime `NO_REPLY` y OpenClaw no envía mensaje.
+- `--quiet` prints only news; if there is none, it prints `NO_REPLY` and OpenClaw sends no message.
 
-- Códigos de salida: 0 bien, 1 error, 2 alguna fuente falló.
+- Exit codes: 0 fine, 1 error, 2 some source failed.
 
-- Si una ejecución igual sigue en marcha, la segunda termina sin hacer nada (fichero de bloqueo).
+- If an identical run is still in progress, the second one ends without doing anything (lock file).
 
-### Configuración
+### Configuration
 
-- `.env`: claves y rutas.
+- `.env`: keys and paths.
 
-- `config/watchlist.yaml`: empresas y fármacos a seguir de cerca, con su peso (monoactivo, principal, secundario).
+- `config/watchlist.yaml`: companies and drugs to follow closely, with their weight (single-asset, main, secondary).
 
-- `config/triage.yaml`: umbrales del triaje.
+- `config/triage.yaml`: triage thresholds.
 
-- `config/rules.yaml`: reglas de operación R1 y R2.
+- `config/rules.yaml`: trading rules R1 and R2.
 
-- `config/sources.yaml`: fuentes activas y frecuencia.
+- `config/sources.yaml`: active sources and frequency.
 
-- `config/conferences.yaml`: fechas y embargos de congresos (opcional).
+- `config/conferences.yaml`: conference dates and embargoes (optional).
 
 ``` text
-variable,uso,obligatoria
-FDACI_HOME,Carpeta de datos,sí
-FDACI_CONTACT,Nombre y email para el User-Agent de SEC y NCBI,sí
-LLM_PROVIDER / LLM_API_KEY / LLM_MODEL,Extracción y redacción,sí
-OPENFDA_API_KEY,Más cuota en openFDA,no
-PDUFA_BIO_API_KEY,Más cuota en pdufa.bio,no
-MARKET_PROVIDER,yfinance (por defecto) | massive | ibkr,no
-MASSIVE_API_KEY,Solo si se usa Massive,no
-DISPLAY_TZ,Europe/Madrid por defecto,no
+variable,use,required
+FDACI_HOME,Data folder,yes
+FDACI_CONTACT,Name and email for the SEC and NCBI User-Agent,yes
+LLM_PROVIDER / LLM_API_KEY / LLM_MODEL,Extraction and writing,yes
+OPENFDA_API_KEY,More quota on openFDA,no
+PDUFA_BIO_API_KEY,More quota on pdufa.bio,no
+MARKET_PROVIDER,yfinance (default) | massive | ibkr,no
+MASSIVE_API_KEY,Only if Massive is used,no
+DISPLAY_TZ,Europe/Madrid by default,no
 ```
 
-## Instalación, programación y seguridad
+## Installation, scheduling and security
 
-Desarrollas y pruebas en el Mac, lanzándolo desde la terminal o desde Claude Code. Cuando una versión está lista, la subes al repositorio con una etiqueta; OpenClaw la instala en el VPS y programa las ejecuciones.
+You develop and test on the Mac, launching it from the terminal or from Claude Code. When a version is ready, you push it to the repository with a tag; OpenClaw installs it on the VPS and schedules the runs.
 
-### Instalación
+### Installation
 
 ``` text
-# Mac (desarrollo)
+# Mac (development)
 git clone https://github.com/<usuario>/fda-catalyst-intel && cd fda-catalyst-intel
 uv sync
-uv run fdaci init            # después, rellenar .env
+uv run fdaci init            # then, fill in .env
 uv run fdaci db upgrade
 uv run fdaci run calendar
 
-# VPS u otro equipo
+# VPS or other machine
 curl -LsSf https://astral.sh/uv/install.sh | sh
 uv tool install git+https://github.com/<usuario>/fda-catalyst-intel@v0.3.0
 fdaci init && fdaci db upgrade && fdaci status
 ```
 
-- En el VPS, usuario de sistema propio y `.env` con permisos 600.
+- On the VPS, a dedicated system user and `.env` with 600 permissions.
 
-- Copia de seguridad: cada noche, `sqlite3 fdaci.db ".backup copia.db"` y copiar el resto de la carpeta.
+- Backup: every night, `sqlite3 fdaci.db ".backup copia.db"` and copy the rest of the folder.
 
-- Actualizar: instalar la nueva etiqueta y ejecutar `fdaci db upgrade`.
+- Update: install the new tag and run `fdaci db upgrade`.
 
-### Programación
+### Scheduling
 
-`fdaci schedule --format crontab` imprime las líneas listas para pegar (horas en UTC):
+`fdaci schedule --format crontab` prints the lines ready to paste (times in UTC):
 
 ``` text
 */15 13-21 * * 1-5  fdaci run calendar --quiet
@@ -589,48 +589,48 @@ fdaci init && fdaci db upgrade && fdaci status
 0 6 * * *           fdaci digest --quiet
 ```
 
-- En el Mac, `--format launchd` si quieres que también corra solo allí.
+- On the Mac, `--format launchd` if you also want it to run on its own there.
 
-- En el VPS, `--format openclaw` genera las tareas para OpenClaw (`openclaw cron create … --command-argv '["fdaci","run","calendar","--quiet"]'`), que ejecutan el comando y envían la salida al canal ([docs](https://docs2.openclaw.ai/cli/cron.md)).
+- On the VPS, `--format openclaw` generates the tasks for OpenClaw (`openclaw cron create … --command-argv '["fdaci","run","calendar","--quiet"]'`), which run the command and send the output to the channel ([docs](https://docs2.openclaw.ai/cli/cron.md)).
 
-- Para cambiar frecuencias: editar `config/sources.yaml` y volver a generar, o pedírselo directamente a OpenClaw.
+- To change frequencies: edit `config/sources.yaml` and regenerate, or ask OpenClaw directly.
 
-### OpenClaw y Claude Code
+### OpenClaw and Claude Code
 
-Los mismos comandos `fdaci` sirven en los dos sitios.
+The same `fdaci` commands work in both places.
 
-- **En el Mac**: lo lanzas desde la terminal o le pides a Claude Code que ejecute un módulo, todo o un informe. `AGENTS.md` y `CLAUDE.md` le explican los comandos.
+- **On the Mac**: you launch it from the terminal or ask Claude Code to run a module, everything or a report. `AGENTS.md` and `CLAUDE.md` explain the commands to it.
 
-- **En el VPS**, OpenClaw orquesta:
+- **On the VPS**, OpenClaw orchestrates:
 
-  1.  Publicas una etiqueta en el repositorio, por ejemplo `v0.3.0`.
+  1.  You publish a tag in the repository, for example `v0.3.0`.
 
-  2.  Le pides que instale o actualice: ejecuta `scripts/install.sh v0.3.0`, que instala esa versión, hace `fdaci init` la primera vez, `fdaci db upgrade` y `fdaci status`.
+  2.  You ask it to install or update: it runs `scripts/install.sh v0.3.0`, which installs that version, runs `fdaci init` the first time, `fdaci db upgrade` and `fdaci status`.
 
-  3.  Programa las ejecuciones con lo que genera `fdaci schedule --format openclaw`, o con la frecuencia que le pidas.
+  3.  It schedules the runs with what `fdaci schedule --format openclaw` generates, or with the frequency you ask for.
 
-  4.  Te envía el resumen diario y responde preguntas usando `fdaci calendar`, `fdaci event` y `fdaci report`.
+  4.  It sends you the daily digest and answers questions using `fdaci calendar`, `fdaci event` and `fdaci report`.
 
-- La skill `openclaw/skills/fdaci/SKILL.md` le explica comandos, ficheros y cómo instalar o actualizar.
+- The skill `openclaw/skills/fdaci/SKILL.md` explains to it the commands, files and how to install or update.
 
-- El Mac y el VPS tienen cada uno su `FDACI_HOME`. Para llevar datos de uno a otro, se copia la carpeta.
+- The Mac and the VPS each have their own `FDACI_HOME`. To move data from one to the other, copy the folder.
 
-- Ninguna clave de bróker ni de mercados de predicción en ningún sitio.
+- No broker or prediction-market key anywhere.
 
-## Referencias
+## References
 
-Verificadas entre el 3 y el 5 de noviembre de 2026. Las APIs cambian: cada conector debe pasar una prueba de humo contra la documentación vigente antes de fijarse.
+Verified between 3 and 5 November 2026. APIs change: each connector must pass a smoke test against the current documentation before being finalised.
 
-- **Calendario**: [pdufa.bio API](https://www.pdufa.bio/developers), [SEC: Accessing EDGAR Data](https://www.sec.gov/edgar/searchedgar/accessing-edgar-data.htm), [guía de la búsqueda de texto completo](https://orthogonal.info/sec-edgar-full-text-search-api-efts-python/), [submissions y ticker → CIK](https://dev.to/odeeb/sec-edgar-api-submissions-json-and-ticker-to-cik-9f5), [Benzinga Calendar API](https://docs.benzinga.com/api-reference/calendar-api/get-fda.md), [BiopharmaWatch](https://biopharmawatch.com/subscription)
+- **Calendar**: [pdufa.bio API](https://www.pdufa.bio/developers), [SEC: Accessing EDGAR Data](https://www.sec.gov/edgar/searchedgar/accessing-edgar-data.htm), [full-text search guide](https://orthogonal.info/sec-edgar-full-text-search-api-efts-python/), [submissions and ticker → CIK](https://dev.to/odeeb/sec-edgar-api-submissions-json-and-ticker-to-cik-9f5), [Benzinga Calendar API](https://docs.benzinga.com/api-reference/calendar-api/get-fda.md), [BiopharmaWatch](https://biopharmawatch.com/subscription)
 
-- **FDA**: [autenticación de openFDA](https://open.fda.gov/apis/authentication), [Drugs@FDA Data Files](https://www.fda.gov/drugs/drug-approvals-and-databases/drugsfda-data-files), [FDA Data Dashboard](https://www.fda.gov/about-fda/performance-data/fda-data-dashboard), [base de datos de CRL](https://intuitionlabs.ai/articles/fda-complete-response-letters-dataset), [aviso de comités 15 días antes](https://www.federalregister.gov/documents/full_text/xml/2013/01/02/2012-31475.xml)
+- **FDA**: [openFDA authentication](https://open.fda.gov/apis/authentication), [Drugs@FDA Data Files](https://www.fda.gov/drugs/drug-approvals-and-databases/drugsfda-data-files), [FDA Data Dashboard](https://www.fda.gov/about-fda/performance-data/fda-data-dashboard), [CRL database](https://intuitionlabs.ai/articles/fda-complete-response-letters-dataset), [committee notice 15 days before](https://www.federalregister.gov/documents/full_text/xml/2013/01/02/2012-31475.xml)
 
-- **Clínico**: [ClinicalTrials.gov API v2](https://cdn.jsdelivr.net/npm/@saibolla/ada@0.1.3/skills/clinicaltrials-database/references/api_reference.md), [AACT](https://aact.ctti-clinicaltrials.org/), [E-utilities](https://www.ncbi.nlm.nih.gov/books/NBK25497/), [bioRxiv API](https://api.biorxiv.org), [claves de OpenAlex](https://groups.google.com/g/openalex-users/c/rI1GIAySpVQ)
+- **Clinical**: [ClinicalTrials.gov API v2](https://cdn.jsdelivr.net/npm/@saibolla/ada@0.1.3/skills/clinicaltrials-database/references/api_reference.md), [AACT](https://aact.ctti-clinicaltrials.org/), [E-utilities](https://www.ncbi.nlm.nih.gov/books/NBK25497/), [bioRxiv API](https://api.biorxiv.org), [OpenAlex keys](https://groups.google.com/g/openalex-users/c/rI1GIAySpVQ)
 
-- **Mercados de predicción**: [Kalshi](https://docs.kalshi.com/getting_started), [entornos de Kalshi](https://dev.to/deskbot_store/kalshi-api-keys-and-authentication-how-request-signing-works-41ia), [términos FDAAPPROVAL](https://kalshi-public-docs.s3.amazonaws.com/contract_terms/FDAAPPROVAL.pdf), [Polymarket](https://docs.polymarket.com/market-data/overview), [Endpoint Arena API](https://endpointarena.com/api), [Endpoint Arena método](https://endpointarena.com/method), [DGOJ](https://www.ordenacionjuego.es/en/node/3309)
+- **Prediction markets**: [Kalshi](https://docs.kalshi.com/getting_started), [Kalshi environments](https://dev.to/deskbot_store/kalshi-api-keys-and-authentication-how-request-signing-works-41ia), [FDAAPPROVAL terms](https://kalshi-public-docs.s3.amazonaws.com/contract_terms/FDAAPPROVAL.pdf), [Polymarket](https://docs.polymarket.com/market-data/overview), [Endpoint Arena API](https://endpointarena.com/api), [Endpoint Arena method](https://endpointarena.com/method), [DGOJ](https://www.ordenacionjuego.es/en/node/3309)
 
-- **Mercado**: [Massive](https://massive.com/knowledge-base/article/why-are-greeks-and-implied-volatility-missing-from-the-options-snapshot), [IBKR TWS API](https://www.interactivebrokers.com/docs/tws-api/doc/market-data-historical/historical-bar-what-to-show/option-implied-volatility), [FINRA Short Interest](https://www.finra.org:443/finra-data/browse-catalog/equity-short-interest)
+- **Market**: [Massive](https://massive.com/knowledge-base/article/why-are-greeks-and-implied-volatility-missing-from-the-options-snapshot), [IBKR TWS API](https://www.interactivebrokers.com/docs/tws-api/doc/market-data-historical/historical-bar-what-to-show/option-implied-volatility), [FINRA Short Interest](https://www.finra.org:443/finra-data/browse-catalog/equity-short-interest)
 
-- **OpenClaw**: [cron](https://docs.openclaw.ai/cron), [CLI de cron](https://docs2.openclaw.ai/cli/cron.md), [sandbox y política de herramientas](https://docs.openclaw.ai/gateway/sandbox-vs-tool-policy-vs-elevated.md), [herramientas por agente](https://docs.openclaw.ai/tools/multi-agent-sandbox-tools), [formato de skills](https://docs.openclaw.ai/clawhub/skill-format.md)
+- **OpenClaw**: [cron](https://docs.openclaw.ai/cron), [cron CLI](https://docs2.openclaw.ai/cli/cron.md), [sandbox and tool policy](https://docs.openclaw.ai/gateway/sandbox-vs-tool-policy-vs-elevated.md), [tools per agent](https://docs.openclaw.ai/tools/multi-agent-sandbox-tools), [skill format](https://docs.openclaw.ai/clawhub/skill-format.md)
 
-- **Europa**: [EMA: qué publica y cuándo](https://www.ema.europa.eu/da/medicines/what-we-publish-medicines-when)
+- **Europe**: [EMA: what is published and when](https://www.ema.europa.eu/da/medicines/what-we-publish-medicines-when)

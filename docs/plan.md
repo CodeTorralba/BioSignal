@@ -1,301 +1,301 @@
-# FDA Catalyst Intelligence — Plan de implementación
+# FDA Catalyst Intelligence — Implementation Plan
 
 Nov 5, 2026 · @Dani
 
-Cinco fases. Cada una deja el sistema funcionando y añade una capa encima: tras la segunda ya es útil a diario y tras la tercera se instala desde tu repositorio. Criterio general: lo más simple que funcione. La información técnica está en el documento hermano, la [referencia técnica](reference.md).
+Five phases. Each one leaves the system working and adds a layer on top: after the second it is already useful every day, and after the third it installs from your repository. General criterion: the simplest thing that works. The technical information is in the sister document, the [technical reference](reference.md).
 
-## Cómo se construye
+## How it is built
 
-Se hace lo más simple que funcione y no se añade nada hasta que un problema real lo pida. Cada fase termina con algo que se usa de verdad.
+Do the simplest thing that works and add nothing until a real problem asks for it. Each phase ends with something that is actually used.
 
-### Principios
+### Principles
 
-1.  **Simplicidad.** SQLite, un CLI y ficheros. Nada de Docker, servidores web, colas ni comprobaciones que nadie vaya a mirar.
+1.  **Simplicity.** SQLite, a CLI and files. No Docker, web servers, queues or checks that nobody will look at.
 
-2.  **Interfaces estables.** Los comandos, el contrato `sync()` y las tablas solo crecen; renombrar algo exige migración y una línea en el CHANGELOG.
+2.  **Stable interfaces.** The commands, the `sync()` contract and the tables only grow; renaming something requires a migration and a line in the CHANGELOG.
 
-3.  **Lo incompleto se apaga.** Un conector a medias queda desactivado en `config/sources.yaml` y no rompe nada.
+3.  **Anything incomplete is switched off.** A half-finished connector stays disabled in `config/sources.yaml` and breaks nothing.
 
-4.  **Pruebas sin red.** Las pruebas usan respuestas grabadas y no dependen de la fecha. Antes de cada versión se lanza a mano una prueba contra las APIs reales.
+4.  **Tests without network.** Tests use recorded responses and do not depend on the date. Before each release, a test against the real APIs is run by hand.
 
-5.  **Sin trading.** Ninguna fase conecta con un bróker ni envía órdenes.
+5.  **No trading.** No phase connects to a broker or sends orders.
 
-### Ciclo de cada fase
+### Cycle of each phase
 
-Igual a mano, con Claude Code o con otro agente:
+The same whether done by hand, with Claude Code or with another agent:
 
-1.  Leer la fase y las fichas de las fuentes que toca en la referencia técnica.
+1.  Read the phase and the source sheets it covers in the technical reference.
 
-2.  Probar cada fuente nueva contra la API real y grabar la respuesta como fixture.
+2.  Try each new source against the real API and record the response as a fixture.
 
-3.  Implementar, con migración SQL si hace falta.
+3.  Implement, with an SQL migration if needed.
 
-4.  Pruebas en verde.
+4.  Tests green.
 
-5.  Probar con datos reales sobre los eventos de referencia.
+5.  Try with real data on the reference events.
 
-6.  Actualizar README y AGENTS.md, fusionar a `main` y etiquetar la versión.
+6.  Update README and AGENTS.md, merge into `main` and tag the release.
 
-### Versiones
+### Versions
 
-`v0.1` a `v0.5` al cerrar cada fase; `v1.0` cuando la fase 5 lleve tres meses de operativa simulada. El VPS instala siempre una etiqueta, nunca `main`.
+`v0.1` to `v0.5` at the close of each phase; `v1.0` when phase 5 has three months of paper trading. The VPS always installs a tag, never `main`.
 
-## Hoja de ruta
+## Roadmap
 
-Cinco fases en orden, cada una apoyada en la anterior.
+Five phases in order, each building on the previous one.
 
-![Útil en la fase 2, instalable en la 3, medible en la 5](img/hoja-de-ruta.png)
+![Useful in phase 2, installable in phase 3, measurable in phase 5](img/hoja-de-ruta.png)
 
-hoja de ruta · 5 fases, 3 hitos
+roadmap · 5 phases, 3 milestones
 
-Tras la fase 2 ya tienes calendario, decisiones, triaje y un resumen diario en el Mac. La fase 3 lo lleva al VPS. Las fases 4 y 5 añaden el análisis profundo y la medición de si todo esto gana dinero.
+After phase 2 you already have a calendar, decisions, triage and a daily summary on the Mac. Phase 3 takes it to the VPS. Phases 4 and 5 add the deep analysis and the measurement of whether all this makes money.
 
-## Fase 1 — Calendario y mercado básico (v0.1)
+## Phase 1 — Calendar and basic market (v0.1)
 
-Un calendario de catalizadores en el que cada fecha tiene fuente e historial, y desde el primer día se guardan precios y opciones de esas empresas. Los datos de opciones no se pueden recuperar después, así que se acumulan aunque todavía no se analicen.
+A catalyst calendar in which every date has a source and a history, and from day one prices and options for those companies are stored. Options data cannot be recovered later, so it is accumulated even if it is not yet analysed.
 
-**Entregables**
+**Deliverables**
 
-- Repositorio con `uv`, CLI (`init`, `db upgrade`, `status`, `run`, `calendar`, `event`) y SQLite con la primera migración.
+- Repository with `uv`, CLI (`init`, `db upgrade`, `status`, `run`, `calendar`, `event`) and SQLite with the first migration.
 
-- Cliente HTTP con límite por fuente, reintentos y `User-Agent` configurable.
+- HTTP client with per-source limit, retries and configurable `User-Agent`.
 
-- Conectores `pdufa_bio`, `edgar` (submissions de la lista de seguimiento y búsqueda de texto completo) y `wires` (RSS de agencias de comunicados).
+- Connectors `pdufa_bio`, `edgar` (submissions of the watchlist and full-text search) and `wires` (RSS of press-release agencies).
 
-- Extractor de anuncios con LLM: fármaco, indicación, tipo de solicitud, fecha, precisión y cita. Si la cita no aparece en el documento, el dato se descarta.
+- Announcement extractor with an LLM: drug, indication, application type, date, precision and quote. If the quote does not appear in the document, the data point is discarded.
 
-- Historial de fechas: un cambio añade una fila; las discrepancias se muestran como conflicto.
+- Date history: a change adds a row; discrepancies are shown as a conflict.
 
-- **Mercado básico** (`run market`): cada día tras el cierre, precio, volumen y capitalización de las empresas del calendario, y su cadena de opciones completa guardada como JSON, con yfinance. Sin cálculos todavía.
+- **Basic market** (`run market`): every day after the close, price, volume and market capitalisation of the companies in the calendar, and their full options chain saved as JSON, with yfinance. No calculations yet.
 
-**Pruebas clave**
+**Key tests**
 
-- Una fecha trimestral no genera un día inventado.
+- A quarterly date does not generate an invented day.
 
-- La extensión del 22 de agosto al 22 de noviembre conserva ambas fechas.
+- The extension from 22 August to 22 November keeps both dates.
 
-- El mismo evento visto en tres fuentes queda como un solo evento.
+- The same event seen in three sources ends up as a single event.
 
-- Si pdufa.bio falla, EDGAR sigue funcionando.
+- If pdufa.bio fails, EDGAR keeps working.
 
-**Criterio de salida** (sobre la lista de eventos de referencia, al final del plan)
+**Exit criterion** (against the list of reference events, at the end of the plan)
 
-- [ ] Todos los eventos de referencia aparecen con su fecha y fuente correctas.
+- [ ] All reference events appear with their correct date and source.
 
-- [ ] Cero duplicados y ninguna fecha sin cita.
+- [ ] Zero duplicates and no date without a quote.
 
-- [ ] Los cambios de fecha de la lista se ven con su historial.
+- [ ] The date changes in the list are visible with their history.
 
-- [ ] Una semana de instantáneas diarias de mercado sin huecos.
+- [ ] One week of daily market snapshots with no gaps.
 
-## Fase 2 — Decisiones, triaje y resumen diario (v0.2)
+## Phase 2 — Decisions, triage and daily summary (v0.2)
 
-El sistema sabe cuándo ha decidido la FDA, clasifica los eventos por oportunidad y te manda un resumen cada mañana. Primer hito útil.
+The system knows when the FDA has decided, ranks events by opportunity and sends you a summary every morning. First useful milestone.
 
-**Entregables**
+**Deliverables**
 
-- Conectores `openfda` (`drugsfda`: aprobaciones y precedentes) y `fda_pages` (aprobaciones del día, calendario de comités, RSS).
+- Connectors `openfda` (`drugsfda`: approvals and precedents) and `fda_pages` (approvals of the day, advisory committee calendar, RSS).
 
-- Cierre de eventos con fuente: carta o página de la FDA, o 8-K y comunicado de la empresa. Las CRL se detectan por la empresa; la base de CRL de openFDA no sirve para esto porque se actualiza de forma irregular.
+- Closing of events with a source: FDA letter or page, or company 8-K and press release. CRLs are detected through the company; the openFDA CRL database is not suitable for this because it is updated irregularly.
 
-- Comités asesores enlazados a su evento (pdufa.bio `/adcomm` y calendario de la FDA).
+- Advisory committees linked to their event (pdufa.bio `/adcomm` and FDA calendar).
 
-- Caja y meses de caja por empresa desde el XBRL de la SEC.
+- Cash and cash runway per company from SEC XBRL.
 
-- **Triaje** A, B o C con `config/triage.yaml`: peso del fármaco en la empresa (marcado en `watchlist.yaml`), capitalización, liquidez, consenso del mercado e incertidumbre abierta. Solo los A pasarán al expediente completo.
+- **Triage** A, B or C with `config/triage.yaml`: weight of the drug in the company (flagged in `watchlist.yaml`), market capitalisation, liquidity, market consensus and open uncertainty. Only the A events move on to the full dossier.
 
-- `fdaci event` con ficha breve y `fdaci digest` con decisiones, cambios de fecha y eventos A de los próximos 14 días.
+- `fdaci event` with a short sheet and `fdaci digest` with decisions, date changes and A events in the next 14 days.
 
-**Pruebas clave**
+**Key tests**
 
-- Una decisión anterior a la fecha PDUFA cierra el evento.
+- A decision before the PDUFA date closes the event.
 
-- Una CRL que solo aparece en un 8-K queda registrada con esa fuente.
+- A CRL that appears only in an 8-K is recorded with that source.
 
-- Nunca se marca «aprobado» por falta de noticias.
+- Never mark "approved" for lack of news.
 
-- `--quiet` sin novedades imprime `NO_REPLY`.
+- `--quiet` with nothing new prints `NO_REPLY`.
 
-**Criterio de salida**
+**Exit criterion**
 
-- [ ] Los eventos de referencia ya decididos quedan cerrados con la fuente correcta.
+- [ ] The reference events already decided are closed with the correct source.
 
-- [ ] Cada evento del calendario tiene nivel A, B o C y su motivo.
+- [ ] Every event in the calendar has level A, B or C and its reason.
 
-- [ ] Dos semanas usando el resumen diario en el Mac sin corregir datos a mano.
+- [ ] Two weeks using the daily summary on the Mac without correcting data by hand.
 
-## Fase 3 — Instalación y automatización (v0.3)
+## Phase 3 — Installation and automation (v0.3)
 
-Subes una etiqueta a tu repositorio y OpenClaw la descarga, la instala y programa las ejecuciones. En el Mac sigues lanzándolo a mano o desde Claude Code.
+You push a tag to your repository and OpenClaw downloads it, installs it and schedules the runs. On the Mac you keep launching it by hand or from Claude Code.
 
-**Entregables**
+**Deliverables**
 
-- `scripts/install.sh <versión>`: `uv tool install git+https://github.com/<usuario>/fda-catalyst-intel@<versión>`, `fdaci init` la primera vez, `fdaci db upgrade` y `fdaci status`. El mismo script sirve para actualizar.
+- `scripts/install.sh <version>`: `uv tool install git+https://github.com/<user>/fda-catalyst-intel@<version>`, `fdaci init` the first time, `fdaci db upgrade` and `fdaci status`. The same script works for updating.
 
-- `fdaci schedule --format openclaw|launchd|crontab`: genera las ejecuciones programadas para OpenClaw en el VPS o para launchd en el Mac.
+- `fdaci schedule --format openclaw|launchd|crontab`: generates the scheduled runs for OpenClaw on the VPS or for launchd on the Mac.
 
-- `openclaw/skills/fdaci/SKILL.md`: comandos disponibles, dónde están los informes y cómo instalar o actualizar.
+- `openclaw/skills/fdaci/SKILL.md`: available commands, where the reports are and how to install or update.
 
-- `AGENTS.md` y `CLAUDE.md`: lo mismo para Claude Code en el Mac.
+- `AGENTS.md` and `CLAUDE.md`: the same for Claude Code on the Mac.
 
-- Copia de seguridad nocturna de la carpeta de datos, como una ejecución programada más.
+- Nightly backup of the data folder, as one more scheduled run.
 
-- README con instalación en 10 minutos.
+- README with a 10-minute installation.
 
-**Pruebas clave**
+**Key tests**
 
-- Instalación desde cero en un Ubuntu limpio y en macOS.
+- Installation from scratch on a clean Ubuntu and on macOS.
 
-- Dos ejecuciones simultáneas de la misma tarea: la segunda no hace nada.
+- Two simultaneous runs of the same task: the second does nothing.
 
-- Restaurar una copia de seguridad.
+- Restore a backup.
 
-**Criterio de salida**
+**Exit criterion**
 
-- [ ] OpenClaw instala una etiqueta en un VPS limpio siguiendo la skill.
+- [ ] OpenClaw installs a tag on a clean VPS following the skill.
 
-- [ ] Siete días de ejecuciones programadas sin intervención, con el resumen llegando al canal.
+- [ ] Seven days of scheduled runs without intervention, with the summary reaching the channel.
 
-- [ ] Actualizar a una etiqueta nueva funciona igual: instalar y `fdaci db upgrade`.
+- [ ] Updating to a new tag works the same way: install and `fdaci db upgrade`.
 
-- [ ] Claude Code lanza cualquier módulo en el Mac siguiendo `AGENTS.md`.
+- [ ] Claude Code launches any module on the Mac following `AGENTS.md`.
 
-## Fase 4 — Expediente por evento (v0.4)
+## Phase 4 — Dossier per event (v0.4)
 
-Los eventos de nivel A reciben un informe completo: ensayos, publicaciones, mercados de predicción y opciones, con cada cifra citada y los contraargumentos a la vista.
+Level A events receive a full report: trials, publications, prediction markets and options, with every figure quoted and the counterarguments in view.
 
-**Entregables**
+**Deliverables**
 
-- `ctgov`: ficha de los ensayos pivotales y aviso si cambian el endpoint primario, el tamaño o las fechas (se compara la copia de hoy con la de ayer).
+- `ctgov`: sheet for the pivotal trials and a warning if the primary endpoint, the size or the dates change (today's copy is compared with yesterday's).
 
-- `europepmc`: artículos, preprints y abstracts de congresos en una sola fuente.
+- `europepmc`: articles, preprints and conference abstracts in a single source.
 
-- **Informes 10-Q y 10-K** de la empresa (trimestral y anual, en EDGAR): de los más recientes se extrae, con cita, lo que la empresa cuenta de la revisión (peticiones de información de la FDA, *major amendment*, reunión de ciclo tardío, comité asesor previsto), fabricación e inspecciones, acuerdos con socios y regalías, caja explicada y riesgos propios del fármaco. Muchas empresas pequeñas solo dan su fecha PDUFA o el resultado en estos informes, sin 8-K. Llegan 40–90 días después del cierre del periodo: sirven para investigar y completar el histórico, no para enterarse antes. Pesan 1–3 MB cada uno, así que se guardan solo las frases útiles.
+- **10-Q and 10-K reports** of the company (quarterly and annual, on EDGAR): from the most recent ones, extract, with a quote, what the company says about the review (FDA information requests, *major amendment*, late-cycle meeting, planned advisory committee), manufacturing and inspections, partner agreements and royalties, explained cash and risks specific to the drug. Many small companies give their PDUFA date or the result only in these reports, with no 8-K. They arrive 40–90 days after the close of the period: they are useful for research and for completing the history, not for finding out earlier. They weigh 1–3 MB each, so only the useful sentences are stored.
 
-- Extracción de cifras clínicas con cita y comprobaciones sencillas (p entre 0 y 1, el intervalo contiene la estimación, el n cuadra). Si dos documentos discrepan, conflicto; si el texto no lo deja claro, ambiguo y vacío.
+- Extraction of clinical figures with a quote and simple checks (p between 0 and 1, the interval contains the estimate, the n adds up). If two documents disagree, conflict; if the text does not make it clear, ambiguous and empty.
 
-- Revisión a mano de las 3–5 cifras que sostienen la tesis de cada evento A antes de usarlas en el informe.
+- Manual review of the 3–5 figures that support the thesis of each A event before using them in the report.
 
-- `kalshi` y `polymarket`: un contrato se enlaza solo si coinciden fármaco, indicación y plazo; se guarda el punto medio y el diferencial.
+- `kalshi` and `polymarket`: a contract is linked only if drug, indication and deadline match; the midpoint and the spread are stored.
 
-- Movimiento implícito calculado con las instantáneas de opciones acumuladas desde la fase 1.
+- Implied move calculated with the options snapshots accumulated since phase 1.
 
-- `fdaci report <id>`: ficha, datos clínicos, historial regulatorio, caja, mercado, mercados de predicción, contraargumentos (un segundo paso del LLM que busca lo que contradice la tesis), vacíos y fuentes. Se guarda con la fecha y nunca se sobrescribe.
+- `fdaci report <id>`: sheet, clinical data, regulatory history, cash, market, prediction markets, counterarguments (a second LLM pass that looks for what contradicts the thesis), gaps and sources. It is saved with the date and never overwritten.
 
-**Pruebas clave**
+**Key tests**
 
-- Un contrato con otro plazo no se enlaza al evento.
+- A contract with a different deadline is not linked to the event.
 
-- Oferta 0,35 y demanda 0,75 se muestran como rango, no como 55 %.
+- Bid 0.35 and ask 0.75 are shown as a range, not as 55%.
 
-- Una p fuera de 0–1 o un intervalo que no contiene la estimación se rechazan.
+- A p outside 0–1 or an interval that does not contain the estimate are rejected.
 
-- Dos cifras distintas para el mismo dato quedan en conflicto.
+- Two different figures for the same data point end up in conflict.
 
-**Criterio de salida**
+**Exit criterion**
 
-- [ ] Informes de tres eventos A reales, revisados por ti y guardados antes de su decisión.
+- [ ] Reports for three real A events, reviewed by you and saved before their decision.
 
-- [ ] Ninguna cifra del informe sin cita.
+- [ ] No figure in the report without a quote.
 
-## Fase 5 — Probabilidades, reglas de operación y backtest (v0.5)
+## Phase 5 — Probabilities, trading rules and backtest (v0.5)
 
-Tres preguntas separadas y con respuestas sencillas: ¿se aprobará?, ¿cuánto se movería la acción en cada caso?, ¿una regla fija de entrada y salida habría ganado dinero? Nada de modelos complejos hasta tener datos que los justifiquen.
+Three separate questions with simple answers: will it be approved? how much would the stock move in each case? would a fixed entry and exit rule have made money? No complex models until there is data to justify them.
 
-**Entregables**
+**Deliverables**
 
-- Tasa base de aprobación por categoría (tipo de solicitud, revisión, área, comité y voto, resubmisión), con estadísticas publicadas y los eventos que el sistema va cerrando.
+- Base approval rate by category (application type, review, area, committee and vote, resubmission), with published statistics and the events the system closes along the way.
 
-- Probabilidad de aprobación como rango, ajustada con un máximo de seis factores justificados. El LLM propone; tú apruebas.
+- Approval probability as a range, adjusted with a maximum of six justified factors. The LLM proposes; you approve.
 
-- Movimiento por escenario (aprobación, CRL, y si aplica restricción o retraso) a partir del movimiento implícito y de casos comparables; riesgo de ampliación de capital según la caja.
+- Move per scenario (approval, CRL, and if applicable restriction or delay) from the implied move and comparable cases; risk of a capital raise according to cash.
 
-- Reglas de operación en `config/rules.yaml`, fijadas antes de mirar resultados: R1 entra al cierre del día hábil anterior a la fecha PDUFA y sale en la primera apertura tras el anuncio; R2 igual pero sale al cierre del quinto día hábil. Incluyen costes, anuncios fuera de sesión, suspensiones y ampliaciones de capital.
+- Trading rules in `config/rules.yaml`, fixed before looking at results: R1 enters at the close of the business day before the PDUFA date and exits at the first open after the announcement; R2 the same but exits at the close of the fifth business day. They include costs, out-of-hours announcements, suspensions and capital raises.
 
-- Backtest de R1 y R2 con precios diarios históricos (yfinance los tiene; las opciones históricas no) y fechas pasadas de pdufa.bio y EDGAR.
+- Backtest of R1 and R2 with historical daily prices (yfinance has them; historical options it does not) and past dates from pdufa.bio and EDGAR.
 
-- Operativa simulada: cada evento A registra entrada y salida según R1 y R2 en la tabla `paper_trade`.
+- Paper trading: each A event records entry and exit according to R1 and R2 in the `paper_trade` table.
 
-- `fdaci backtest`: puntuación de Brier de la probabilidad frente a la tasa base y al mercado de predicción, y resultado de cada regla con el número de eventos.
+- `fdaci backtest`: Brier score of the probability against the base rate and against the prediction market, and the result of each rule with the number of events.
 
-**Pruebas clave**
+**Key tests**
 
-- Un backtest a fecha T no usa nada publicado después de T.
+- A backtest at date T uses nothing published after T.
 
-- Cambiar una regla crea una regla nueva que solo se evalúa con eventos futuros.
+- Changing a rule creates a new rule that is evaluated only on future events.
 
-**Criterio de salida**
+**Exit criterion**
 
-- [ ] Backtest de los eventos de los últimos 12 meses con las reglas fijadas.
+- [ ] Backtest of the events of the last 12 months with the fixed rules.
 
-- [ ] Tres meses de operativa simulada antes de `v1.0`.
+- [ ] Three months of paper trading before `v1.0`.
 
-**Después**: con esos resultados se decide con calma. Cualquier conexión a un bróker sería otro proyecto, con aprobación humana en cada operación.
+**Afterwards**: with those results, decide calmly. Any connection to a broker would be a separate project, with human approval on every trade.
 
-## Pruebas clave y eventos de referencia
+## Key tests and reference events
 
-La calidad se mide contra una lista fija de eventos conocidos, no contra cuántos eventos haya en el calendario. Diez pruebas protegen lo esencial; no hacen falta más al principio.
+Quality is measured against a fixed list of known events, not against how many events there are in the calendar. Ten tests protect the essentials; no more are needed at first.
 
-### Las diez pruebas
+### The ten tests
 
-1.  Una fecha con precisión de mes o trimestre nunca genera un día concreto.
+1.  A date with month or quarter precision never generates a specific day.
 
-2.  Un cambio de fecha conserva la anterior en el historial.
+2.  A date change keeps the previous one in the history.
 
-3.  El mismo evento en varias fuentes, o anunciado por dos empresas socias, es un solo evento.
+3.  The same event in several sources, or announced by two partner companies, is a single event.
 
-4.  Ningún dato sin cita que aparezca en su documento.
+4.  No data point without a quote that appears in its document.
 
-5.  Nunca «aprobado» por falta de noticias.
+5.  Never "approved" for lack of news.
 
-6.  Si una fuente falla, las demás siguen y `fdaci status` lo muestra.
+6.  If a source fails, the others keep going and `fdaci status` shows it.
 
-7.  Una cifra clínica imposible o contradictoria no se acepta en silencio.
+7.  An impossible or contradictory clinical figure is not silently accepted.
 
-8.  Un contrato de predicción con otro plazo no se enlaza.
+8.  A prediction contract with a different deadline is not linked.
 
-9.  Un backtest a fecha T no ve nada posterior a T.
+9.  A backtest at date T sees nothing after T.
 
-10. Los mismos comandos y fixtures dan el mismo resultado en el Mac y en Linux.
+10. The same commands and fixtures give the same result on the Mac and on Linux.
 
-### Eventos de referencia
+### Reference events
 
-En `tests/reference_events.yaml`, con el resultado esperado de cada uno. Empezar con estos cuatro y completar hasta unos 15 con decisiones ya conocidas: aprobaciones, CRL, extensiones y fechas adelantadas. Revalidar las fechas al usarlos; no son señales de inversión.
+In `tests/reference_events.yaml`, with the expected result for each. Start with these four and complete up to about 15 with already known decisions: approvals, CRLs, extensions and early dates. Revalidate the dates when using them; they are not investment signals.
 
-| Caso                        | Qué comprueba                                                                            |
+| Case                        | What it checks                                                                           |
 |-----------------------------|------------------------------------------------------------------------------------------|
-| Summit (SMMT), ivonescimab  | Fecha PDUFA del 14 de noviembre de 2026, contrato en Kalshi, fármaco licenciado de Akeso |
-| Savara (SVRA), molgramostim | Extensión del 22 de agosto al 22 de noviembre de 2026; agregadores con la fecha antigua  |
-| Nuvalent (NUVL), neladalkib | Revisión prioritaria con fecha el 27 de noviembre de 2026                                |
-| Capricor (CAPR), deramiocel | Comité asesor del 29 de julio de 2026 sobre su BLA 125842                                |
+| Summit (SMMT), ivonescimab  | PDUFA date of 14 November 2026, contract on Kalshi, drug licensed from Akeso             |
+| Savara (SVRA), molgramostim | Extension from 22 August to 22 November 2026; aggregators with the old date              |
+| Nuvalent (NUVL), neladalkib | Priority review with a date of 27 November 2026                                          |
+| Capricor (CAPR), deramiocel | Advisory committee of 29 July 2026 on its BLA 125842                                     |
 
-### Un conector está terminado cuando
+### A connector is finished when
 
-- [ ] Funciona con `fdaci run`, respeta los límites de su fuente y deja su estado en `fdaci status`.
+- [ ] It works with `fdaci run`, respects the limits of its source and leaves its state in `fdaci status`.
 
-- [ ] Guarda el documento original y la cita de cada dato.
+- [ ] It stores the original document and the quote for each data point.
 
-- [ ] Tiene una prueba con respuesta grabada.
+- [ ] It has a test with a recorded response.
 
-- [ ] Tiene una ficha breve en `docs/sources/` con la fecha en que se verificó la API.
+- [ ] It has a short sheet in `docs/sources/` with the date on which the API was verified.
 
-## Decisiones abiertas y riesgos
+## Open decisions and risks
 
-Cuatro decisiones son tuyas; ninguna bloquea la fase 1 salvo la primera.
+Four decisions are yours; none blocks phase 1 except the first.
 
-| Decisión                                     | Opciones                                                               | Cuándo            |
+| Decision                                     | Options                                                                | When              |
 |----------------------------------------------|------------------------------------------------------------------------|-------------------|
-| Proveedor de LLM para extracción y redacción | Cualquiera con salida JSON fiable                                      | Fase 1            |
-| Cómo programar en el VPS                     | Tareas de comando de OpenClaw (tu caso) o cron                         | Fase 3            |
-| Canal de OpenClaw                            | Telegram, WhatsApp, Slack, Discord                                     | Fase 3            |
-| Datos de opciones de pago                    | Solo si yfinance falla o se queda corto: Massive o Interactive Brokers | Cuando haga falta |
+| LLM provider for extraction and writing      | Any with reliable JSON output                                          | Phase 1           |
+| How to schedule on the VPS                   | OpenClaw command tasks (your case) or cron                             | Phase 3           |
+| OpenClaw channel                             | Telegram, WhatsApp, Slack, Discord                                     | Phase 3           |
+| Paid options data                            | Only if yfinance fails or falls short: Massive or Interactive Brokers  | When needed       |
 
-| Riesgo                                      | Qué se hace                                                                    |
+| Risk                                        | What is done                                                                   |
 |---------------------------------------------|--------------------------------------------------------------------------------|
-| Fechas erróneas o desfasadas en agregadores | Fuente primaria manda; discrepancias como conflicto                            |
-| La FDA decide antes o después de la fecha   | El evento sigue abierto hasta ver la decisión                                  |
-| Cambia una API o una página                 | `fdaci status` lo muestra; se arregla ese conector                             |
-| yfinance deja de funcionar                  | Cambiar `MARKET_PROVIDER`; el resto no cambia                                  |
-| El LLM inventa o malinterpreta              | Cita obligatoria, comprobaciones simples y revisión a mano de las cifras clave |
-| Pocos eventos para sacar conclusiones       | Comparar siempre con la tasa base y no ajustar modelos hasta tener datos       |
-| Kalshi y Polymarket bloqueados en España    | Módulo opcional; si no responde, se marca y el resto sigue                     |
+| Wrong or outdated dates in aggregators      | Primary source rules; discrepancies as a conflict                              |
+| The FDA decides before or after the date    | The event stays open until the decision is seen                                |
+| An API or a page changes                    | `fdaci status` shows it; that connector is fixed                               |
+| yfinance stops working                      | Change `MARKET_PROVIDER`; nothing else changes                                 |
+| The LLM invents or misreads                 | Mandatory quote, simple checks and manual review of the key figures            |
+| Too few events to draw conclusions          | Always compare with the base rate and do not fit models until there is data    |
+| Kalshi and Polymarket blocked in Spain      | Optional module; if it does not respond, it is flagged and the rest keeps going |

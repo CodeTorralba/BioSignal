@@ -3,3 +3,4 @@ backtest/
 historico/
 __pycache__/
 .env
+analisis/

@@ -78,6 +78,25 @@ def test_extension_keeps_history_and_older_news_does_not_undo_it():
     assert e["date_start"] == "2027-12-30"
 
 
+def test_batches_read_in_parallel_still_give_one_event_per_application():
+    evs = events.load_events()
+    texts = ["On January 10, 2027 the FDA accepted the NDA for ACM-101 in gout with a PDUFA date of September 30, 2027.",
+             "The FDA extended the PDUFA date for ACM-101 in gout to December 30, 2027.",
+             "The FDA accepted the sNDA for ACM-101 in psoriasis with a PDUFA date of October 15, 2027."]
+    ids = [batches.queue_item("date", cik="0000000001", company="Acme Bio Inc.", tickers=["ACME"], form="8-K",
+                              filed=f"2027-0{i + 1}-01", url="https://www.sec.gov/x.htm", excerpts=[t], events=evs)
+           for i, t in enumerate(texts)]
+    batches.prepare()
+    md = sorted((DATA / "batches" / "pending").glob("*.md"))[-1]
+    dates = ["September 30, 2027", "December 30, 2027", "October 15, 2027"]
+    lines = [{"item": i, "events": [{"known": None, "drug": "ACM-101", "other_names": [], "indication": ind,
+                                     "application": None, "date_text": d, "own": True, "quote": t}]}
+             for i, t, d, ind in zip(ids, texts, dates, ["gout", "gout", "plaque psoriasis"], strict=True)]
+    _answer(md, list(reversed(lines)))  # answers in any order: applied by filing date
+    got = sorted((e["indication"], e["date_start"], len(e["date_history"])) for e in events.load_events().values())
+    assert got == [("gout", "2027-12-30", 2), ("plaque psoriasis", "2027-10-15", 1)]
+
+
 def test_decision_needs_a_quote_and_none_changes_nothing():
     e = events.new_event("0000000001", "Acme Bio Inc.", "ACME", "ACM-101", [], "gout", "NDA", True,
                          parse_date("September 30, 2027"), "September 30, 2027", {"kind": "edgar", "url": "u", "filed": "2027-01-01"})

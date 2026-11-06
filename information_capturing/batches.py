@@ -123,11 +123,11 @@ def apply_answer(ans, item, events):
             names = [drug] + [n for n in x.get("other_names") or [] if isinstance(n, str)]
             target = events.get(item["known"][known]) if known else None
             if not target:
-                # Same product, same company: the same event if the date matches, or if it only came from pdufa.bio
-                # (the date in the filing then replaces pdufa.bio's). Otherwise it is another application.
+                # Same product, same company and a compatible indication: the same event (a later date is a change).
+                # A clearly different indication is another application of the product.
                 target = next((e for e in events.values() if e.get("cik") == item["cik"] and e["status"] == "pending"
-                               and ev.same_product(e, names)
-                               and (e["date_start"] == d["start"] or not e.get("edgar_confirmed"))), None)
+                               and ev.same_product(e, names) and (e["date_start"] == d["start"] or not e.get("edgar_confirmed")
+                                                                  or ev.same_indication(e.get("indication"), x.get("indication")))), None)
             if target:
                 ev.set_date(target, d, x["date_text"], s)
             else:
@@ -162,15 +162,19 @@ def apply_answer(ans, item, events):
 
 
 def merge():
-    """Applies every answered batch in batches/pending; returns (applied items, rejected parts)."""
+    """Applies every answered batch in batches/pending; returns (applied items, rejected parts).
+
+    Answers are applied in the order the documents were filed, so that when the agent reads several batches in
+    parallel a later filing still updates the event an earlier filing created.
+    """
     q = _queue()
     events = ev.load_events()
-    applied, rejected = 0, []
+    answers, rejected, done = [], [], []
     for md in sorted((B / "pending").glob("*.md")):
         out = md.with_suffix(".out.jsonl")
         if not out.exists():
             continue
-        answered = set()
+        done.append((md, out))
         for line in out.read_text(encoding="utf-8").splitlines():
             line = line.strip().strip("`")
             if not line or not line.startswith("{"):
@@ -184,10 +188,15 @@ def merge():
             if not item or item.get("batch") != md.stem:
                 rejected.append({"at": now(), "batch": md.stem, "item": ans.get("item"), "reason": "item not in this batch", "line": line[:300]})
                 continue
-            for why in apply_answer(ans, item, events):
-                rejected.append({"at": now(), "batch": md.stem, "item": item["id"], "reason": why, "line": line[:300]})
-            answered.add(item["id"])
-            applied += 1
+            answers.append((item, ans, line, md.stem))
+    answered = set()
+    for item, ans, line, batch in sorted(answers, key=lambda a: (a[0]["filed"] or "", a[0]["id"])):
+        if item["id"] in answered:
+            continue
+        for why in apply_answer(ans, item, events):
+            rejected.append({"at": now(), "batch": batch, "item": item["id"], "reason": why, "line": line[:300]})
+        answered.add(item["id"])
+    for md, out in done:
         for iid in [i for i, it in q["items"].items() if it.get("batch") == md.stem]:
             if iid in answered:
                 del q["items"][iid]
@@ -199,7 +208,7 @@ def merge():
     ev.save_events(events)
     write_json(B / "queue.json", q)
     ev.log_rejected(rejected)
-    return applied, len(rejected)
+    return len(answered), len(rejected)
 
 
 def pending_summary():

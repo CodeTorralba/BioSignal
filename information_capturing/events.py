@@ -91,6 +91,19 @@ def same_product(e, names):
     return bool(keys([e.get("drug", "")] + e.get("aliases", [])) & keys(names))
 
 
+INDICATION_STOP = {"treatment", "patients", "adults", "adult", "disease", "chronic", "severe", "advanced", "associated",
+                   "therapy", "pediatric", "children", "moderate", "active", "certain", "previously", "treated"}
+
+
+def same_indication(a, b):
+    """False only when both indications are stated and share no meaningful word (4+ letters)."""
+    if not a or not b:
+        return True
+    words = lambda s: {w[:6] for w in re.findall(r"[a-z]{4,}", s.lower()) if w not in INDICATION_STOP}  # noqa: E731
+    wa, wb = words(a), words(b)
+    return not wa or not wb or bool(wa & wb)
+
+
 def is_small(e, caps=None):
     """Market value under $2B (yfinance, or pdufa.bio until yfinance has been asked); unknown counts as small."""
     caps = caps if caps is not None else read_json(CAL / "market_caps.json", {})

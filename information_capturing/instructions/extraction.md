@@ -32,7 +32,7 @@ Each entry has exactly these keys:
 | `other_names` | Other names of the same product in the excerpts (code, brand, generic), copied literally; `[]` if none |
 | `indication` | The indication, in a few words, as in the text; `null` if not stated |
 | `application` | `NDA`, `BLA`, `sNDA`, `sBLA` or `null` if not stated |
-| `date_text` | The target date **copied literally** from the quote: `"March 14, 2027"`, `"first quarter of 2027"`, `"mid-2027"` |
+| `date_text` | The target date **copied literally** from the quote, **with its year**: `"March 14, 2027"`, `"first quarter of 2027"`, `"mid-2027"`. If the quote gives the date without a year ("September 30th"), leave the event out |
 | `own` | `true` if the company develops or owns the product (alone or with a partner); `false` if it belongs to another company or the company only receives royalties |
 | `quote` | The sentence that gives the date, **copied literally** from one excerpt (20–600 characters); it must contain `date_text` |
 

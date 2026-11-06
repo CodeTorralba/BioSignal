@@ -6,6 +6,7 @@ be in the excerpts, the date must be in the quote) and updates the calendar. Una
 """
 
 import json
+import re
 from datetime import timedelta
 
 from . import events as ev
@@ -104,7 +105,7 @@ def apply_answer(ans, item, events):
         for x in ans.get("events") or []:
             why = _check_quote(x.get("quote"), item)
             d = parse_date(x.get("date_text"))
-            drug = (x.get("drug") or "").strip()
+            drug = re.sub(r"[™®©]", "", x.get("drug") or "").strip()
             known = x.get("known")
             if not why and (not x.get("date_text") or letters(x["date_text"]) not in letters(x["quote"])):
                 why = "date_text not found in the quote"
@@ -120,7 +121,7 @@ def apply_answer(ans, item, events):
                 problems.append(why)
                 continue
             s = src | {"quote": x["quote"][:600]}
-            names = [drug] + [n for n in x.get("other_names") or [] if isinstance(n, str)]
+            names = [drug] + [re.sub(r"[™®©]", "", n).strip() for n in x.get("other_names") or [] if isinstance(n, str)]
             target = events.get(item["known"][known]) if known else None
             if not target:
                 # Same product, same company and a compatible indication: the same event (a later date is a change).

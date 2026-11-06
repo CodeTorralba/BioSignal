@@ -54,6 +54,7 @@ def drug_names(evs):
     names = set()
     for e in evs:
         names |= {e.get("drug", "")} | set(e.get("aliases", []))
+    names = {re.sub(r"[™®©]", "", n).strip() for n in names}  # openFDA rejects "REZZAYO®"
     return sorted(n for n in names if n and len(n) >= 3)
 
 

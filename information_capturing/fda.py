@@ -5,6 +5,7 @@ may announce a decision is queued for the agent, which confirms it with a quote;
 """
 
 import re
+import urllib.parse
 from datetime import timedelta
 
 from .common import (DATA, get, get_json, html_to_text, name_pattern, notice, read_json, today, write_bytes,
@@ -89,9 +90,9 @@ def federal_register(pending, company_names_of):
 def drugsfda(folder, names):
     """Drugs@FDA records for the product names (kept as JSON); returns approval actions as text lines."""
     results = {}
-    for n in sorted(set(names), key=len, reverse=True)[:4]:
+    for n in sorted({re.sub(r"[™®©]", "", n).strip() for n in names}, key=len, reverse=True)[:4]:
         q = f'openfda.brand_name:"{n}"+openfda.generic_name:"{n}"+products.brand_name:"{n}"+products.active_ingredients.name:"{n}"'
-        d = get_json(f"{OPENFDA}/drug/drugsfda.json?search={q.replace(' ', '%20')}&limit=20")
+        d = get_json(f"{OPENFDA}/drug/drugsfda.json?search={urllib.parse.quote(q, safe=':+')}&limit=20")
         for r in (d or {}).get("results", []):
             results[r["application_number"]] = r
     write_json(folder / "drugsfda" / f"{today().isoformat()}.json", list(results.values()))
@@ -112,7 +113,7 @@ def crl(folder, company_names):
     """Published Complete Response Letters of the company (openFDA, kept as JSON); returns the letters."""
     letters = {}
     for n in company_names[:2]:
-        d = get_json(f'{OPENFDA}/transparency/crl.json?search=company_name:"{n.replace(" ", "%20")}"&limit=100')
+        d = get_json(f"{OPENFDA}/transparency/crl.json?search={urllib.parse.quote(f'company_name:\"{n}\"', safe=':')}&limit=100")
         for r in (d or {}).get("results", []):
             letters[r.get("file_name") or r.get("letter_date")] = r
     if letters:

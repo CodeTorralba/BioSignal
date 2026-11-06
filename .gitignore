@@ -4,3 +4,5 @@ historico/
 __pycache__/
 .env
 analisis/
+.venv/
+data_collection/

@@ -4,6 +4,8 @@ Nov 5, 2026 · @Dani
 
 Five phases. Each one leaves the system working and adds a layer on top: after the second it is already useful every day, and after the third it installs from your repository. General criterion: the simplest thing that works. The technical information is in the sister document, the [technical reference](reference.md).
 
+> **Update, 6 Nov 2026.** The data collection is built first, as the module [`information_capturing/`](../information_capturing/README.md): one folder per small company waiting for a decision, plain files instead of SQLite, run on a schedule by an agent that also reads the extraction batches. It covers the calendar and market of phase 1 and the collection side of phases 2 and 4 (filings, trials, papers, FDA sources, prediction markets). Analysis, probabilities and paper trading stay for later modules.
+
 ## How it is built
 
 Do the simplest thing that works and add nothing until a real problem asks for it. Each phase ends with something that is actually used.

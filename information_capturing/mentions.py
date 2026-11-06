@@ -115,12 +115,20 @@ def find_mentions(text, filed, keep_after):
         b = min(ends[i] + 1 if i < len(ends) else len(t), k.end() + 600)
         sentence = t[a:b]
         dates = [m for m in ANY_DATE.finditer(sentence) if not RELEASE_DATE.match(sentence, m.end())]
+        if len(sentence) > 900:
+            near = k.start() - a
+            dates = [m for m in dates if abs(m.start() - near) <= 450]
         parsed = [p for p in (parse_date(m.group(0)) for m in dates) if p
                   and date.fromisoformat(p["end"]) >= keep_after
                   and date.fromisoformat(p["start"]) <= filed + timedelta(days=900)]
         if not parsed:
             continue
-        excerpt = re.sub(r"\s+", " ", sentence).strip()[:1200]
+        if len(sentence) > 900:  # a long risk-factor paragraph: keep the part around the key
+            a, b = max(a, k.start() - 450), min(b, k.end() + 450)
+            sentence = t[a:b]
+        # The sentence before often names the product ("ENFLONSIA was accepted ... The FDA set a PDUFA date of ...").
+        before = t[(ends[i - 2] + 1 if i >= 2 else 0):a] if i >= 1 and a == ends[i - 1] + 1 else ""
+        excerpt = re.sub(r"\s+", " ", (before if len(before) <= 400 else "") + sentence).strip()
         if excerpt in seen:
             continue
         seen.add(excerpt)

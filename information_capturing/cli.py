@@ -81,8 +81,8 @@ def daily(args):
     with RunLock():
         print(f"daily {now()}", flush=True)
         run_step("merge agent answers", batches.merge)
+        run_step("pdufa.bio", ev.pdufa_bio)  # first, so the agent sees pdufa.bio's events as known
         run_step("EDGAR discovery", ev.discover, 3)
-        run_step("pdufa.bio", ev.pdufa_bio)
         active = run_step("select companies", companies.select) or {}
         run_step("XBI prices", market.prices, DATA / "market" / "XBI.csv", "XBI")
         events = ev.load_events()
@@ -139,10 +139,10 @@ def monthly(args):
 def init(args):
     with RunLock():
         print(f"init {now()}", flush=True)
+        run_step("pdufa.bio", ev.pdufa_bio)
         # Acceptance press releases set the date ~10 months ahead; every company restates its dates each quarter.
         run_step("EDGAR discovery: press releases, 300 days", ev.discover, 300, ev.FORMS_RELEASES)
         run_step("EDGAR discovery: all forms, 120 days", ev.discover, 120, ev.FORMS_ALL)
-        run_step("pdufa.bio", ev.pdufa_bio)
         finish()
 
 

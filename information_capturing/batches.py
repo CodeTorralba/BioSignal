@@ -68,6 +68,9 @@ def prepare():
     if not todo:
         return sorted((B / "pending").glob("*.md"))
     events = ev.load_events()
+    for i in todo:  # the calendar may have grown since the item was queued (pdufa.bio, earlier answers)
+        if i["kind"] == "date":
+            i["known"] = {f"K{n}": e["id"] for n, e in enumerate(known_events(events, i["cik"], "date"), 1)}
     n = len(list((B / "pending").glob(f"{today().isoformat()}_*.md"))) + len(list((B / "done").glob(f"{today().isoformat()}_*.md")))
     for k in range(0, len(todo), BATCH_SIZE):
         n += 1
@@ -120,8 +123,11 @@ def apply_answer(ans, item, events):
             names = [drug] + [n for n in x.get("other_names") or [] if isinstance(n, str)]
             target = events.get(item["known"][known]) if known else None
             if not target:
+                # Same product, same company: the same event if the date matches, or if it only came from pdufa.bio
+                # (the date in the filing then replaces pdufa.bio's). Otherwise it is another application.
                 target = next((e for e in events.values() if e.get("cik") == item["cik"] and e["status"] == "pending"
-                               and ev.same_product(e, names) and e["date_start"] == d["start"]), None)
+                               and ev.same_product(e, names)
+                               and (e["date_start"] == d["start"] or not e.get("edgar_confirmed"))), None)
             if target:
                 ev.set_date(target, d, x["date_text"], s)
             else:

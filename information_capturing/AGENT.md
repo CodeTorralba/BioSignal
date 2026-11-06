@@ -15,9 +15,10 @@ To update: `git pull && uv sync`. Never edit the code or push to the repository.
 
 ## First run (once)
 
-1. `uv run capture init` (20–40 minutes: it searches 300 days of EDGAR).
-2. Read the batches it lists (see "Batches" below).
-3. `uv run capture merge`: it applies your answers and opens a folder for each small company, with its history.
+1. `uv run capture init` (a few minutes: it searches 300 days of EDGAR and reads pdufa.bio).
+2. Read the batches it lists (see "Batches" below). You may read several batches in parallel.
+3. `uv run capture merge`: it applies your answers and opens a folder for each small company with its history
+   (1–2 hours the first time: two years of filings, prices, trials and papers per company).
 
 ## Scheduled jobs
 

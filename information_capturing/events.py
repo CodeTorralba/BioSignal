@@ -44,32 +44,46 @@ def save_events(events):
 
 
 DOSAGE = re.compile(r"\b(?:injection|tablets?|capsules?|cream|gel|ointment|oral|solution|suspension|for|extended[- ]release|"
-                    r"autoinjector|subcutaneous|intravenous|ophthalmic|nasal|spray|film|patch|\d+(?:\.\d+)?\s?%|\d+\s?mg)\b", re.I)
+                    r"autoinjector|subcutaneous|intravenous|ophthalmic|nasal|spray|film|patch|sublingual|buccal|inhalation|"
+                    r"inhaled|topical|transdermal|\d+(?:\.\d+)?\s?%|\d+\s?mc?g)\b", re.I)
+DESCRIPTIVE = re.compile(r"\b(?:once|twice)[- ]weekly\b|\bweekly\b|\bdaily\b|\bdose\s*\d*\b|\blower doses?\b|\bformulation\b|"
+                         r"\bfull approval\b|\bresubmission\b|\bs?NDAs?\b|\bs?BLAs?\b|\bfast-acting\b|\bgastro-resistant\b|"
+                         r"\b(?:AAV )?gene therapy\b|\btherapy\b|\bvaccine\b", re.I)
+NOT_NAMES = {"mrna", "rnai", "c5 rnai", "influenza", "the", "and", "formerly", "also known as"}
 
 
 def split_names(s):
-    """Names of a product as written by a source: "Veligrotug (VRDN-001) - (THRIVE-2)" -> ["Veligrotug", "VRDN-001"]."""
-    s = re.sub(r"\s+-\s+\([^)]*\)\s*$", "", s or "")  # trial name at the end in pdufa.bio
-    parts = re.split(r"[()\[\]]|\s\+\s|\swith\s|/|;|,|\s—\s|\s-\s", s)
+    """Product names in a source's label: "Tebipenem HBr (SPR994) - (PIVOT-PO)" -> ["Tebipenem HBr", "SPR994"].
+
+    Only the product counts: what follows " - " (indication or trial), a comma or "vs.", combination partners
+    ("+ X", "plus X", "with X") and long descriptions in brackets are dropped, so a partner drug such as
+    dexamethasone never becomes a name of the event.
+    """
+    s = re.split(r"\s[-—]\s|,\s(?![^()]*\))|\svs\.?\s", s or "")[0]
+    s = re.split(r"\s(?:\+|plus|with|and)\s(?![^()]*\))", s)[0]
+    inner = re.search(r"\(([^()]*)\)", s)
+    parts = [re.sub(r"\(.*", "", s)]
+    if inner and not inner.group(1).lstrip().startswith("+"):
+        parts += re.split(r"[;/,]|\s\+\s", inner.group(1))
     out = []
     for p in parts:
-        p = DOSAGE.sub(" ", p)
-        p = re.sub(r"[™®]", "", re.sub(r"\s+", " ", p)).strip(" .-")
-        if len(p) >= 3 and p.lower() not in {"and", "the", "formerly", "also known as"}:
+        p = DOSAGE.sub(" ", DESCRIPTIVE.sub(" ", p))
+        p = re.sub(r"[™®]", "", re.sub(r"\s+", " ", p)).strip(" .-+")
+        if len(p) >= 3 and len(p.split()) <= 3 and p.lower() not in NOT_NAMES:
             out.append(p)
-    return out
+    return list(dict.fromkeys(out))
 
 
 def keys(names):
-    """Comparable keys of names: the letters and digits of each name and of its first word (5+ letters)."""
+    """Comparable keys of names: the letters and digits of each name and of its first word (6+ letters)."""
     out = set()
     for n in names:
         k = letters(n)
         if len(k) >= 4:
             out.add(k)
-        first = letters(n.split()[0]) if n.split() else ""
-        if len(first) >= 5:
-            out.add(first)
+        words = n.split()
+        if len(words) > 1 and len(letters(words[0])) >= 6 and not DESCRIPTIVE.fullmatch(words[0]):
+            out.add(letters(words[0]))
     return out
 
 
@@ -78,8 +92,9 @@ def same_product(e, names):
 
 
 def is_small(e, caps=None):
+    """Market value under $2B (yfinance, or pdufa.bio until yfinance has been asked); unknown counts as small."""
     caps = caps if caps is not None else read_json(CAL / "market_caps.json", {})
-    cap = caps.get(e.get("ticker") or "", {}).get("market_cap")
+    cap = caps.get(e.get("ticker") or "", {}).get("market_cap") or (e.get("pdufa_bio") or {}).get("market_cap_usd")
     return cap is None or cap < CAP_LIMIT
 
 
@@ -244,16 +259,21 @@ def pdufa_bio():
     events = load_events()
     recent = (today() - timedelta(days=120)).isoformat()
     rows = raw.get("data", [])
+    claimed = {e["pdufa_bio_id"] for e in events.values() if e.get("pdufa_bio_id")}
     for r in rows:
         names = split_names(r.get("name"))
         d = _bio_date(r)
         cik = sec.cik_of_ticker(r.get("ticker"))
         mine = next((e for e in events.values() if e.get("pdufa_bio_id") == r["id"]), None)
         if not mine:
-            # The ticker in pdufa.bio can be the partner (GSK for Spero's tebipenem): match by product, same company first.
-            near = [e for e in events.values() if same_product(e, names)
-                    and (e["status"] == "pending" or ((e.get("decision") or {}).get("date") or "") >= recent)]
-            near.sort(key=lambda e: e.get("cik") != cik)
+            # One pdufa.bio record per event. The ticker in pdufa.bio can be the partner (GSK for Spero's
+            # tebipenem), so another company's EDGAR event is accepted if the dates are within 120 days.
+            def gap(e, d=d):
+                return abs((date.fromisoformat(e["date_start"]) - date.fromisoformat(d["start"])).days) if d else 9999
+            near = [e for e in events.values() if not e.get("pdufa_bio_id") and same_product(e, names)
+                    and (e["status"] == "pending" or ((e.get("decision") or {}).get("date") or "") >= recent)
+                    and (e.get("cik") == cik or (e.get("edgar_confirmed") and gap(e) <= 120))]
+            near.sort(key=lambda e: (e.get("cik") != cik, gap(e)))
             mine = near[0] if near else None
         if not mine and r.get("status") == "Upcoming" and d and names:
             src = {"kind": "pdufa.bio", "url": r.get("url"), "filed": None, "quote": r.get("name"),
@@ -261,7 +281,8 @@ def pdufa_bio():
             date_text = r.get("date") or r.get("date_month")
             mine = add_event(events, new_event(cik, r.get("company"), r.get("ticker"), names[0], names,
                                                r.get("indication"), None, None, d, date_text, src))
-        if mine:
+        if mine and r["id"] not in claimed:
+            claimed.add(r["id"])
             mine["pdufa_bio_id"] = r["id"]
             mine["pdufa_bio"] = {k: r.get(k) for k in ("id", "ticker", "name", "date", "date_precision", "date_month",
                                                         "status", "outcome", "decision_date", "decision_source_url",
@@ -300,8 +321,9 @@ def _compare(events, caps):
     out += ["", f"## pdufa.bio already has an outcome, EDGAR not yet ({len(outcomes)})", ""]
     out += [f"- {describe(e)} — pdufa.bio: {b['outcome']} on {b.get('decision_date')} ({b.get('decision_source_url')})" for e, b in outcomes]
     write_text(CAL / "pdufa_bio_comparison.md", "\n".join(out) + "\n")
-    for e in only_bio:
-        if is_small(e, caps):
+    week_ago = (today() - timedelta(days=7)).isoformat()
+    for e in only_bio:  # a week gives the agent time to read the filings that would confirm it
+        if is_small(e, caps) and e["first_seen"] <= week_ago:
             notice("pdufa.bio comparison", f"only in pdufa.bio: {describe(e)} ({e['pdufa_bio']['url']})", key=f"bio-only:{e['id']}")
     for e, bd in dates:
         if is_small(e, caps):

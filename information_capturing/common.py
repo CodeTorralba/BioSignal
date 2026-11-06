@@ -207,7 +207,7 @@ def slug(s, n=40):
 
 def name_pattern(names):
     """Regex that finds any of the names as a whole word (case-insensitive); None if there are no names."""
-    names = sorted({n for n in names if n and len(n) >= 3}, key=len, reverse=True)
+    names = sorted({n for n in names if n and len(n) >= 4}, key=len, reverse=True)
     if not names:
         return None
     return re.compile(r"(?<![\w-])(?:" + "|".join(re.escape(n) for n in names) + r")(?![\w-])", re.I)

@@ -118,6 +118,12 @@ def test_pdufa_bio_names_match_the_edgar_event():
     e = {"drug": "tebipenem pivoxil hydrobromide", "aliases": ["SPR994"]}
     assert events.same_product(e, events.split_names("Tebipenem HBr (SPR994) - (PIVOT-PO)"))
     assert not events.same_product(e, events.split_names("Olezarsen - (CORE)"))
+    # Indication, application type and combination partners are not names of the product.
+    assert events.split_names("ARIKAYCE (amikacin liposome inhalation suspension) - MAC lung disease (sNDA)") == ["ARIKAYCE", "amikacin liposome"]
+    assert events.split_names("Mezigdomide + carfilzomib + dexamethasone - RRMM (SUCCESSOR-2)") == ["Mezigdomide"]
+    assert events.split_names("Yeztugo (lenacapavir) once-weekly oral") == ["Yeztugo", "lenacapavir"]
+    arikayce = {"drug": "ARIKAYCE", "aliases": ["amikacin liposome"]}
+    assert not events.same_product(arikayce, events.split_names("VOXZOGO (vosoritide) - hypochondroplasia (sNDA)"))
 
 
 def test_only_small_companies_inside_the_window_are_followed(monkeypatch):
